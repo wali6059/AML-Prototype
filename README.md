@@ -1,6 +1,6 @@
 ---
 title: Tip or Skip
-colorFrom: emerald
+colorFrom: green
 colorTo: yellow
 sdk: gradio
 sdk_version: 6.10.0
