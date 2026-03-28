@@ -8,10 +8,7 @@ import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from prototype_pipeline import ARTIFACT_DIR, MODEL_FEATURES, predict_tip
-
-
-APP_DIR = Path(__file__).resolve().parent
+from prototype_pipeline import ARTIFACT_DIR, predict_tip
 
 
 def load_artifacts() -> dict:
@@ -203,6 +200,11 @@ def top_zones_table(taxi_type: str):
     return subset
 
 
+INITIAL_MONTHLY_PLOT = plot_monthly_trends("yellow")
+INITIAL_HOURLY_PLOT = plot_hourly_trends("yellow")
+INITIAL_ZONE_TABLE = top_zones_table("yellow")
+
+
 with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
     gr.Markdown(
         """
@@ -217,10 +219,11 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
     )
 
     with gr.Tab("Overview"):
-        gr.Markdown(metrics_markdown())
-        gr.Markdown(ARTIFACTS["dataset_notes"])
+        with gr.Row():
+            gr.Markdown(metrics_markdown())
+            gr.Markdown(ARTIFACTS["dataset_notes"])
         gr.Dataframe(
-            ARTIFACTS["sample_rows"].head(20),
+            value=ARTIFACTS["sample_rows"].head(20),
             label="Sampled cleaned rows used for the prototype",
             interactive=False,
         )
@@ -293,13 +296,36 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
         )
 
     with gr.Tab("Explore"):
-        taxi_type_chart = gr.Dropdown(
-            ["yellow", "green"], value="yellow", label="Taxi type"
+        gr.Markdown(
+            "Explore precomputed summaries from the sampled 2025 prototype dataset."
         )
-        monthly_plot = gr.Plot(label="Monthly trend")
-        hourly_plot = gr.Plot(label="Hourly trend")
+        with gr.Row():
+            taxi_type_chart = gr.Dropdown(
+                ["yellow", "green"], value="yellow", label="Taxi type"
+            )
+            refresh_button = gr.Button("Refresh charts")
+        with gr.Row():
+            monthly_plot = gr.Plot(
+                value=INITIAL_MONTHLY_PLOT,
+                label="Monthly trend",
+            )
+            hourly_plot = gr.Plot(
+                value=INITIAL_HOURLY_PLOT,
+                label="Hourly trend",
+            )
         zone_table = gr.Dataframe(
-            label="Top pickup zones by tip rate", interactive=False
+            value=INITIAL_ZONE_TABLE,
+            label="Top pickup zones by tip rate",
+            interactive=False,
+        )
+        refresh_button.click(
+            plot_monthly_trends, inputs=taxi_type_chart, outputs=monthly_plot
+        )
+        refresh_button.click(
+            plot_hourly_trends, inputs=taxi_type_chart, outputs=hourly_plot
+        )
+        refresh_button.click(
+            top_zones_table, inputs=taxi_type_chart, outputs=zone_table
         )
         taxi_type_chart.change(
             plot_monthly_trends, inputs=taxi_type_chart, outputs=monthly_plot
@@ -310,13 +336,10 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
         taxi_type_chart.change(
             top_zones_table, inputs=taxi_type_chart, outputs=zone_table
         )
-        demo.load(plot_monthly_trends, inputs=taxi_type_chart, outputs=monthly_plot)
-        demo.load(plot_hourly_trends, inputs=taxi_type_chart, outputs=hourly_plot)
-        demo.load(top_zones_table, inputs=taxi_type_chart, outputs=zone_table)
 
     with gr.Tab("Blog Draft"):
         gr.Markdown(ARTIFACTS["blog_background"])
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, ssr=False)
