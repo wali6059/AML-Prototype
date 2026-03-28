@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+import os
+
+os.environ["GRADIO_SSR_MODE"] = "false"
+os.environ.setdefault("MPLBACKEND", "Agg")
 
 import gradio as gr
 import joblib
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from prototype_pipeline import ARTIFACT_DIR, predict_tip
+
+matplotlib.use("Agg")
 
 
 def load_artifacts() -> dict:
