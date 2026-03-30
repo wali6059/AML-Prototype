@@ -1,162 +1,167 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tip or Skip | Project Blog</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css">
-</head>
-<body>
-  <div class="page-shell">
-    <header class="hero">
-      <p class="eyebrow">Applied Machine Learning Project</p>
-      <h1>Tip or Skip</h1>
-      <p class="lede">
-        A GitHub Pages write-up for the NYC taxi tipping prototype. The article below is loaded
-        from the same <code>blog_background.md</code> file used in the Hugging Face Space.
-      </p>
-      <div class="hero-links">
-        <a href="../README.md">Repository README</a>
-        <a href="../blog_background.md">Raw Blog Markdown</a>
-      </div>
-    </header>
-
-    <main class="content-grid">
-      <aside class="sidebar">
-        <h2>What This Page Covers</h2>
-        <ul>
-          <li>Problem motivation</li>
-          <li>Prior work and model framing</li>
-          <li>Prototype scope</li>
-          <li>Planned next-step architecture</li>
-          <li>Data limitations</li>
-        </ul>
-      </aside>
-
-      <article class="post">
-        <div id="blog-content" class="markdown-body">
-          <p>Loading blog content...</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tip or Skip | Project Blog</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <h1>Tip or Skip</h1>
+        <p class="lede">
+          A GitHub Pages write-up for the NYC taxi tipping prototype.
+        </p>
+        <div class="hero-links">
+          <a href="../README.md">Repository README</a>
+          <a href="./blog_background.md">Raw Blog Markdown</a>
         </div>
-      </article>
-    </main>
-  </div>
+      </header>
 
-  <script>
-    function escapeHtml(text) {
-      return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-    }
+      <main class="content-grid">
+        <aside class="sidebar">
+          <h2>What This Page Covers</h2>
+          <ul>
+            <li>Problem motivation</li>
+            <li>Prior work and model framing</li>
+            <li>Prototype scope</li>
+            <li>Planned next-step architecture</li>
+            <li>Data limitations</li>
+          </ul>
+        </aside>
 
-    function formatInline(text) {
-      let html = escapeHtml(text);
-      html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-      html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-      html = html.replace(/_([^_]+)_/g, "<em>$1</em>");
-      return html;
-    }
+        <article class="post">
+          <div id="blog-content" class="markdown-body">
+            <p>Loading blog content...</p>
+          </div>
+        </article>
+      </main>
+    </div>
 
-    function renderMarkdown(markdown) {
-      const lines = markdown.replace(/\r/g, "").split("\n");
-      const html = [];
-      let paragraph = [];
-      let inUl = false;
-      let inOl = false;
-
-      function flushParagraph() {
-        if (paragraph.length) {
-          html.push("<p>" + formatInline(paragraph.join(" ")) + "</p>");
-          paragraph = [];
-        }
+    <script>
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
       }
 
-      function closeLists() {
-        if (inUl) {
-          html.push("</ul>");
-          inUl = false;
-        }
-        if (inOl) {
-          html.push("</ol>");
-          inOl = false;
-        }
+      function formatInline(text) {
+        let html = escapeHtml(text);
+        html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+        html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+        html = html.replace(/_([^_]+)_/g, "<em>$1</em>");
+        return html;
       }
 
-      for (const line of lines) {
-        const trimmed = line.trim();
+      function renderMarkdown(markdown) {
+        const lines = markdown.replace(/\r/g, "").split("\n");
+        const html = [];
+        let paragraph = [];
+        let inUl = false;
+        let inOl = false;
 
-        if (!trimmed) {
-          flushParagraph();
-          closeLists();
-          continue;
+        function flushParagraph() {
+          if (paragraph.length) {
+            html.push("<p>" + formatInline(paragraph.join(" ")) + "</p>");
+            paragraph = [];
+          }
         }
 
-        const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
-        if (headingMatch) {
-          flushParagraph();
-          closeLists();
-          const level = headingMatch[1].length;
-          html.push(`<h${level}>${formatInline(headingMatch[2])}</h${level}>`);
-          continue;
-        }
-
-        const orderedMatch = trimmed.match(/^\d+\.\s+(.*)$/);
-        if (orderedMatch) {
-          flushParagraph();
+        function closeLists() {
           if (inUl) {
             html.push("</ul>");
             inUl = false;
           }
-          if (!inOl) {
-            html.push("<ol>");
-            inOl = true;
-          }
-          html.push("<li>" + formatInline(orderedMatch[1]) + "</li>");
-          continue;
-        }
-
-        const unorderedMatch = trimmed.match(/^-\s+(.*)$/);
-        if (unorderedMatch) {
-          flushParagraph();
           if (inOl) {
             html.push("</ol>");
             inOl = false;
           }
-          if (!inUl) {
-            html.push("<ul>");
-            inUl = true;
-          }
-          html.push("<li>" + formatInline(unorderedMatch[1]) + "</li>");
-          continue;
         }
 
+        for (const line of lines) {
+          const trimmed = line.trim();
+
+          if (!trimmed) {
+            flushParagraph();
+            closeLists();
+            continue;
+          }
+
+          const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+          if (headingMatch) {
+            flushParagraph();
+            closeLists();
+            const level = headingMatch[1].length;
+            html.push(
+              `<h${level}>${formatInline(headingMatch[2])}</h${level}>`,
+            );
+            continue;
+          }
+
+          const orderedMatch = trimmed.match(/^\d+\.\s+(.*)$/);
+          if (orderedMatch) {
+            flushParagraph();
+            if (inUl) {
+              html.push("</ul>");
+              inUl = false;
+            }
+            if (!inOl) {
+              html.push("<ol>");
+              inOl = true;
+            }
+            html.push("<li>" + formatInline(orderedMatch[1]) + "</li>");
+            continue;
+          }
+
+          const unorderedMatch = trimmed.match(/^-\s+(.*)$/);
+          if (unorderedMatch) {
+            flushParagraph();
+            if (inOl) {
+              html.push("</ol>");
+              inOl = false;
+            }
+            if (!inUl) {
+              html.push("<ul>");
+              inUl = true;
+            }
+            html.push("<li>" + formatInline(unorderedMatch[1]) + "</li>");
+            continue;
+          }
+
+          closeLists();
+          paragraph.push(trimmed);
+        }
+
+        flushParagraph();
         closeLists();
-        paragraph.push(trimmed);
+        return html.join("\n");
       }
 
-      flushParagraph();
-      closeLists();
-      return html.join("\n");
-    }
-
-    fetch("../blog_background.md")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to load blog_background.md");
-        }
-        return response.text();
-      })
-      .then((markdown) => {
-        document.getElementById("blog-content").innerHTML = renderMarkdown(markdown);
-      })
-      .catch((error) => {
-        document.getElementById("blog-content").innerHTML =
-          "<p>Unable to load the blog content. Open <a href='../blog_background.md'>blog_background.md</a> directly.</p>";
-        console.error(error);
-      });
-  </script>
-</body>
+      fetch("./blog_background.md")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to load blog_background.md");
+          }
+          return response.text();
+        })
+        .then((markdown) => {
+          document.getElementById("blog-content").innerHTML =
+            renderMarkdown(markdown);
+        })
+        .catch((error) => {
+          document.getElementById("blog-content").innerHTML =
+            "<p>Unable to load the blog content. Open <a href='./blog_background.md'>blog_background.md</a> directly.</p>";
+          console.error(error);
+        });
+    </script>
+  </body>
 </html>
