@@ -84,12 +84,17 @@ def _build_feature_row(
     lookup = ARTIFACTS["zone_options"].rename(
         columns={"zone": "pickup_zone", "borough": "pickup_borough"}
     )
-    pickup_borough = lookup.loc[
-        lookup["pickup_zone"] == pickup_zone, "pickup_borough"
-    ].iloc[0]
-    dropoff_borough = lookup.loc[
+
+    p_borough_match = lookup.loc[lookup["pickup_zone"] == pickup_zone, "pickup_borough"]
+    pickup_borough = p_borough_match.iloc[0] if not p_borough_match.empty else "Unknown"
+
+    d_borough_match = lookup.loc[
         lookup["pickup_zone"] == dropoff_zone, "pickup_borough"
-    ].iloc[0]
+    ]
+    dropoff_borough = (
+        d_borough_match.iloc[0] if not d_borough_match.empty else "Unknown"
+    )
+
     return {
         "pickup_hour": int(pickup_hour),
         "pickup_weekday": int(pickup_weekday),
@@ -348,4 +353,4 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch()
