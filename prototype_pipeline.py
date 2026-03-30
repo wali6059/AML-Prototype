@@ -11,6 +11,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import Ridge, SGDClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier, HistGradientBoostingRegressor
 from sklearn.metrics import (
     f1_score,
     mean_absolute_error,
@@ -21,6 +22,7 @@ from sklearn.metrics import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
 
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -230,15 +232,14 @@ def sample_taxi_data(
 def build_preprocessor() -> ColumnTransformer:
     return ColumnTransformer(
         transformers=[
-            ("num", StandardScaler(), NUMERIC_FEATURES),
+            ("num", "passthrough", NUMERIC_FEATURES),
             (
                 "cat",
-                OneHotEncoder(handle_unknown="ignore"),
+                OneHotEncoder(handle_unknown="ignore", sparse_output=False),
                 CATEGORICAL_FEATURES,
             ),
         ]
     )
-
 
 def train_models(df: pd.DataFrame) -> Tuple[Pipeline, Pipeline, Dict[str, float]]:
     train_mask = df["month_split"].isin(["train", "valid"])
@@ -254,12 +255,12 @@ def train_models(df: pd.DataFrame) -> Tuple[Pipeline, Pipeline, Dict[str, float]
             ("preprocess", build_preprocessor()),
             (
                 "model",
-                SGDClassifier(
+                HistGradientBoostingClassifier(
                     loss="log_loss",
-                    alpha=0.0005,
-                    max_iter=2000,
-                    tol=1e-3,
+                    max_iter=150,
+                    learning_rate=0.1,
                     random_state=42,
+                    early_stopping=True,
                 ),
             ),
         ]
@@ -275,7 +276,16 @@ def train_models(df: pd.DataFrame) -> Tuple[Pipeline, Pipeline, Dict[str, float]
     regressor = Pipeline(
         steps=[
             ("preprocess", build_preprocessor()),
-            ("model", Ridge(alpha=1.0)),
+            (
+                "model", 
+                HistGradientBoostingRegressor(
+                    loss="squared_error",
+                    max_iter=150, 
+                    learning_rate=0.1,
+                    random_state=42,
+                    early_stopping=True,
+                )
+            ),
         ]
     )
     regressor.fit(tipped_train[MODEL_FEATURES], tipped_train["log_tip_amount"])
@@ -391,3 +401,4 @@ def predict_tip(
         "conditional_tip": conditional_tip,
         "expected_tip": expected_tip,
     }
+
