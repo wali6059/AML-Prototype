@@ -75,6 +75,7 @@ def _build_feature_row(
     store_and_fwd_flag: str,
 ) -> dict:
     lookup = ARTIFACTS["zone_options"].rename(columns={"zone": "pickup_zone", "borough": "pickup_borough"})
+    
     p_borough_match = lookup.loc[lookup["pickup_zone"] == pickup_zone, "pickup_borough"]
     pickup_borough = p_borough_match.iloc[0] if not p_borough_match.empty else "Unknown"
 
