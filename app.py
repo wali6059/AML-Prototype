@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 os.environ["GRADIO_SSR_MODE"] = "false"
 os.environ.setdefault("MPLBACKEND", "Agg")
@@ -15,6 +16,14 @@ import pandas as pd
 from prototype_pipeline import ARTIFACT_DIR, predict_tip
 
 matplotlib.use("Agg")
+ROOT_DIR = Path(__file__).resolve().parent
+
+
+def load_blog_background() -> str:
+    root_blog_path = ROOT_DIR / "blog_background.md"
+    if root_blog_path.exists():
+        return root_blog_path.read_text(encoding="utf-8")
+    return (ARTIFACT_DIR / "blog_background.md").read_text(encoding="utf-8")
 
 
 def load_artifacts() -> dict:
@@ -25,7 +34,7 @@ def load_artifacts() -> dict:
     sample_rows = pd.read_csv(ARTIFACT_DIR / "sample_rows.csv")
     zone_options = pd.read_csv(ARTIFACT_DIR / "zone_options.csv")
     dataset_notes = (ARTIFACT_DIR / "dataset_notes.md").read_text(encoding="utf-8")
-    blog_background = (ARTIFACT_DIR / "blog_background.md").read_text(encoding="utf-8")
+    blog_background = load_blog_background()
     models = {
         "yellow": joblib.load(ARTIFACT_DIR / "yellow_model_bundle.joblib"),
         "green": joblib.load(ARTIFACT_DIR / "green_model_bundle.joblib"),
