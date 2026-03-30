@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import urllib.request
 from pathlib import Path
 
 import folium
@@ -12,13 +13,34 @@ import pandas as pd
 from prototype_pipeline import ARTIFACT_DIR, MODEL_FEATURES, predict_tip
 
 
-BOROUGH_COORDS = {
-    "Manhattan": (40.7831, -73.9712),
-    "Brooklyn": (40.6782, -73.9442),
-    "Queens": (40.7282, -73.7949),
-    "Bronx": (40.8448, -73.8648),
-    "Staten Island": (40.5795, -74.1502),
-}
+TLC_ZONES_URL = "https://data.cityofnewyork.us/api/views/8meu-9t5y/rows.geojson?accessType=DOWNLOAD"
+_zone_centroids_cache: dict[str, tuple[float, float]] | None = None
+
+
+def _load_zone_centroids() -> dict[str, tuple[float, float]]:
+    """Return {zone_name: (lat, lon)} computed from TLC zone polygon centroids."""
+    global _zone_centroids_cache
+    if _zone_centroids_cache is not None:
+        return _zone_centroids_cache
+    with urllib.request.urlopen(TLC_ZONES_URL, timeout=30) as r:
+        geojson = json.loads(r.read())
+    centroids: dict[str, tuple[float, float]] = {}
+    for feature in geojson["features"]:
+        zone = feature["properties"]["zone"]
+        geom = feature["geometry"]
+        # Collect all exterior ring points (GeoJSON: [lon, lat])
+        rings: list[list] = []
+        if geom["type"] == "Polygon":
+            rings = [geom["coordinates"][0]]
+        elif geom["type"] == "MultiPolygon":
+            rings = [poly[0] for poly in geom["coordinates"]]
+        pts = [pt for ring in rings for pt in ring]
+        if pts:
+            lon = sum(p[0] for p in pts) / len(pts)
+            lat = sum(p[1] for p in pts) / len(pts)
+            centroids[zone] = (lat, lon)
+    _zone_centroids_cache = centroids
+    return centroids
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -191,37 +213,37 @@ def top_zones_table(taxi_type: str):
     return subset
 
 
-def _borough_agg(taxi_type: str) -> pd.DataFrame:
+def _manhattan_zones(taxi_type: str) -> pd.DataFrame:
     zones_df = ARTIFACTS["zones"]
-    subset = zones_df[zones_df["taxi_type"] == taxi_type].copy()
-    stats = subset.groupby("pickup_borough").agg(
-        trips=("trips", "sum"),
-        tip_rate=("tip_rate", "mean"),
-        avg_tip_amount=("avg_tip_amount", "mean"),
-        zone_count=("pickup_zone", "count"),
-    ).reset_index()
-    return stats.sort_values("trips", ascending=False)
+    subset = zones_df[
+        (zones_df["taxi_type"] == taxi_type)
+        & (zones_df["pickup_borough"] == "Manhattan")
+    ].copy()
+    return subset.sort_values("trips", ascending=False)
 
 
 def build_nyc_map(taxi_type: str, metric: str) -> str:
     metric_col = "tip_rate" if metric == "Tip Rate" else "avg_tip_amount"
-    stats = _borough_agg(taxi_type)
+    zones = _manhattan_zones(taxi_type)
+    centroids = _load_zone_centroids()
 
     fig = folium.Figure(width="100%", height="480px")
-    m = folium.Map(location=[40.72, -73.96], zoom_start=11, tiles="CartoDB positron")
+    m = folium.Map(location=[40.754, -73.984], zoom_start=12, tiles="CartoDB positron")
     fig.add_child(m)
 
-    max_val = stats[metric_col].max()
-    min_val = stats[metric_col].min()
+    valid = zones[zones["pickup_zone"].isin(centroids)]
+    if valid.empty:
+        return fig._repr_html_()
+
+    max_val = valid[metric_col].max()
+    min_val = valid[metric_col].min()
     val_range = max(max_val - min_val, 1e-6)
 
-    for _, row in stats.iterrows():
-        borough = row["pickup_borough"]
-        if borough not in BOROUGH_COORDS:
-            continue
-        lat, lon = BOROUGH_COORDS[borough]
+    for _, row in valid.iterrows():
+        zone = row["pickup_zone"]
+        lat, lon = centroids[zone]
         val = row[metric_col]
-        t = (val - min_val) / val_range  # 0 = low, 1 = high
+        t = (val - min_val) / val_range
 
         # Blue (low) → Green (high)
         r = int(30 + 80 * (1 - t))
@@ -230,25 +252,24 @@ def build_nyc_map(taxi_type: str, metric: str) -> str:
         hex_color = f"#{r:02x}{g:02x}{b:02x}"
 
         display_val = f"{val:.1%}" if metric_col == "tip_rate" else f"${val:.2f}"
-        radius = int(28 + 18 * t)
+        radius = int(8 + 12 * t)
 
         popup_html = (
-            f"<b>{borough}</b><br>"
+            f"<b>{zone}</b><br>"
             f"Trips sampled: {int(row['trips']):,}<br>"
             f"Avg tip rate: {row['tip_rate']:.1%}<br>"
-            f"Avg tip amount: ${row['avg_tip_amount']:.2f}<br>"
-            f"Zones covered: {int(row['zone_count'])}"
+            f"Avg tip amount: ${row['avg_tip_amount']:.2f}"
         )
         folium.CircleMarker(
             location=[lat, lon],
             radius=radius,
             color="#ffffff",
-            weight=2,
+            weight=1.5,
             fill=True,
             fill_color=hex_color,
             fill_opacity=0.85,
-            popup=folium.Popup(popup_html, max_width=230),
-            tooltip=f"<b>{borough}</b>: {display_val}",
+            popup=folium.Popup(popup_html, max_width=220),
+            tooltip=f"<b>{zone}</b>: {display_val}",
         ).add_to(m)
 
     return fig._repr_html_()
@@ -256,13 +277,13 @@ def build_nyc_map(taxi_type: str, metric: str) -> str:
 
 def build_map_outputs(taxi_type: str, metric: str):
     map_html = build_nyc_map(taxi_type, metric)
-    stats = _borough_agg(taxi_type)
-    table = stats.rename(columns={
-        "pickup_borough": "Borough",
+    metric_col = "tip_rate" if metric == "Tip Rate" else "avg_tip_amount"
+    zones = _manhattan_zones(taxi_type).sort_values(metric_col, ascending=False)
+    table = zones[["pickup_zone", "trips", "tip_rate", "avg_tip_amount"]].rename(columns={
+        "pickup_zone": "Zone",
         "trips": "Trips",
         "tip_rate": "Tip Rate",
         "avg_tip_amount": "Avg Tip ($)",
-        "zone_count": "Zones",
     })
     table["Tip Rate"] = table["Tip Rate"].round(3)
     table["Avg Tip ($)"] = table["Avg Tip ($)"].round(2)
@@ -338,37 +359,33 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
 
     with gr.Tab("Explore"):
         taxi_type_chart = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
-        monthly_plot = gr.Plot(label="Monthly trend")
-        hourly_plot = gr.Plot(label="Hourly trend")
-        zone_table = gr.Dataframe(label="Top pickup zones by tip rate", interactive=False)
+        monthly_plot = gr.Plot(value=plot_monthly_trends("yellow"), label="Monthly trend")
+        hourly_plot = gr.Plot(value=plot_hourly_trends("yellow"), label="Hourly trend")
+        zone_table = gr.Dataframe(value=top_zones_table("yellow"), label="Top pickup zones by tip rate", interactive=False)
         taxi_type_chart.change(plot_monthly_trends, inputs=taxi_type_chart, outputs=monthly_plot)
         taxi_type_chart.change(plot_hourly_trends, inputs=taxi_type_chart, outputs=hourly_plot)
         taxi_type_chart.change(top_zones_table, inputs=taxi_type_chart, outputs=zone_table)
-        demo.load(plot_monthly_trends, inputs=taxi_type_chart, outputs=monthly_plot)
-        demo.load(plot_hourly_trends, inputs=taxi_type_chart, outputs=hourly_plot)
-        demo.load(top_zones_table, inputs=taxi_type_chart, outputs=zone_table)
 
     with gr.Tab("Maps"):
         gr.Markdown(
-            "## Risk-Aware Tip Maps\n"
-            "Borough-level tipping patterns across NYC. Circle **size and color** reflect the selected metric. "
+            "## Manhattan Zone Tip Map\n"
+            "Per-zone tipping patterns across Manhattan neighborhoods. Circle **size and color** reflect the selected metric. "
             "Click any circle for a breakdown, or hover for a quick read."
         )
         with gr.Row():
             map_taxi_type = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
             map_metric = gr.Dropdown(["Tip Rate", "Avg Tip Amount"], value="Tip Rate", label="Metric")
         map_display = gr.HTML(label="NYC Tip Map")
-        gr.Markdown("### Borough summary")
-        map_table = gr.Dataframe(label="Borough statistics", interactive=False)
+        gr.Markdown("### Zone breakdown")
+        map_table = gr.Dataframe(label="Manhattan zones", interactive=False)
 
         map_taxi_type.change(fn=build_map_outputs, inputs=[map_taxi_type, map_metric], outputs=[map_display, map_table])
         map_metric.change(fn=build_map_outputs, inputs=[map_taxi_type, map_metric], outputs=[map_display, map_table])
-        demo.load(fn=build_map_outputs, inputs=[map_taxi_type, map_metric], outputs=[map_display, map_table])
 
     with gr.Tab("Blog Draft"):
         gr.Markdown(ARTIFACTS["blog_background"])
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(server_name="0.0.0.0", server_port=7860)
 
