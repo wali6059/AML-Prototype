@@ -1,14 +1,14 @@
 # Background & Motivation
 
-Tipping is a complex, noisy real-world behavior shaped by a confluence of geography, temporal dynamics, trip context, and underlying socioeconomic patterns. In the context of New York City's highly structured transportation ecosystem, tipping presents an ideal yet challenging Applied Machine Learning problem. The NYC TLC dataset provides immense volume and structural richness, yet the ultimate target, whether a rider tips and by how much, is highly heterogeneous across different boroughs and times of day.
+Tipping is a complex, noisy real-world behavior shaped by geography, temporal dynamics, trip context, and underlying socioeconomic patterns. In the context of New York City's highly structured transportation ecosystem, tipping presents an ideal learning problem. The NYC TLC dataset provides immense volume and feature richness, yet whether a rider tips and by how much is highly varied across different boroughs and times of day.
 
-Understanding these tipping dynamics matters significantly for two reasons. Operationally, driver compensation relies heavily on tips; accurately mapping regions and temporal windows with high expected tip values can optimize fleet distribution and improve driver livelihoods. Methodologically, this dataset serves as a rigorous benchmark for tabular machine learning, requiring the synthesis of high-cardinality spatial features, cyclical temporal features, and continuous monetary variables to predict an imperfectly distributed label.
+Understanding these tipping dynamics matters significantly for two reasons. Driver compensation relies heavily on tips sp accurately mapping regions and temporal windows with high expected tip values can optimize fleet distribution and improve driver livelihoods. This dataset serves as a rigorous benchmark for tabular machine learning, requiring the synthesis of high-cardinality spatial features, cyclical temporal features, and continuous monetary variables to predict an imperfectly distributed label.
 
 # Prior Work & Methodology Alignment
 
-Previous transportation analytics studies using TLC records have predominantly focused on macroscopic trends: demand forecasting, travel time estimation, and broader spatial mobility patterns. When examining tipping specifically, prior behavioral economic studies generally treat it as an outcome influenced by service quality and payment friction. On the machine learning front, predicting such targets is often tackled using generalized linear models or tree-based ensembles.
+Previous transportation analytics studies using TLC records have predominantly focused on macroscopic trends like demand forecasting, travel time estimation, and broader spatial mobility patterns. When examining tipping specifically, prior behavioral economic studies generally treat it as an outcome influenced by service quality and payment friction. On the machine learning front, predicting such targets is often tackled using generalized linear models or tree-based ensembles.
 
-However, attempting to model tipping as a single continuous target often fails because the underlying data generation process is dual-natured: the decision to tip at all is fundamentally different from the decision of how much to tip.
+However, attempting to model tipping as a single continuous target often fails because the underlying data generation process is dual-natured as the decision to tip at all is fundamentally different from the decision of how much to tip.
 
 To address this, our project adopts a **Two-Stage Hurdle Model architecture**:
 
@@ -19,9 +19,7 @@ This decoupled approach prevents the large influx of zero-tip rides from skewing
 
 # Current Prototype Scope
 
-This prototype serves as a functional proof of concept. It uses the 2025 NYC TLC yellow and green taxi trip records, joins them with geographic zone metadata, performs feature engineering, and deploys an initial two-stage ML pipeline using histogram-based gradient boosting baselines.
-
-This milestone validates the end-to-end data pipeline, establishes evaluation metrics such as ROC-AUC and RMSE, and provides a functioning interactive deployment.
+This prototype serves as a functional proof of concept. It uses the 2025 NYC TLC yellow and green taxi trip records, joins them with geographic zone metadata, performs feature engineering, and deploys an initial two-stage ML pipeline using histogram-based gradient boosting baselines. This validates the end-to-end data pipeline, establishes evaluation metrics such as ROC-AUC and RMSE, and provides a functioning interactive deployment.
 
 # What Machine Learning Has Been Implemented
 
