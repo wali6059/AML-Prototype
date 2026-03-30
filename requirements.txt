@@ -1,4 +1,4 @@
-gradio>=6.10,<7.0
+gradio>=5.23,<5.24
 folium>=0.14
 joblib>=1.4
 matplotlib>=3.8
