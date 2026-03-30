@@ -59,13 +59,14 @@ For both yellow and green taxi subsets, the current baseline uses histogram-base
 - sampled rows for display in the app,
 - supporting markdown files for the dataset notes and project blog.
 
-The Hugging Face Space then loads only those saved artifacts at runtime. That means the deployed app does not need the full raw TLC parquet files once artifact generation has already been completed locally.
+The merged app also includes a Manhattan zone map view built with `folium`, using TLC zone geometry fetched at runtime so the interface can visualize zone-level tip rate and average tip amount patterns.
 
 ## What The Space Shows
 
 - An overview tab with model metrics, dataset notes, and sample cleaned rows.
 - A prediction tab where a user enters a hypothetical trip and gets the predicted tip probability, conditional tip, and expected tip.
 - An exploration tab with precomputed monthly, hourly, and zone-level summaries.
+- A maps tab that visualizes Manhattan tipping patterns.
 - A blog tab that displays the project background text from `blog_background.md`.
 
 ## Local build steps

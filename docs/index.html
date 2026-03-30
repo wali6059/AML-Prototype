@@ -22,7 +22,7 @@
         </p>
         <div class="hero-links">
           <a href="../README.md">Repository README</a>
-          <a href="./blog_background.md">Raw Blog Markdown</a>
+          <a href="https://raw.githubusercontent.com/wali6059/AML-Prototype/main/blog_background.md">Raw Blog Markdown</a>
         </div>
       </header>
 
@@ -146,7 +146,9 @@
         return html.join("\n");
       }
 
-      fetch("./blog_background.md")
+      fetch(
+        "https://raw.githubusercontent.com/wali6059/AML-Prototype/main/blog_background.md",
+      )
         .then((response) => {
           if (!response.ok) {
             throw new Error("Failed to load blog_background.md");
@@ -159,7 +161,7 @@
         })
         .catch((error) => {
           document.getElementById("blog-content").innerHTML =
-            "<p>Unable to load the blog content. Open <a href='./blog_background.md'>blog_background.md</a> directly.</p>";
+            "<p>Unable to load the blog content. Open <a href='https://raw.githubusercontent.com/wali6059/AML-Prototype/main/blog_background.md'>blog_background.md</a> directly.</p>";
           console.error(error);
         });
     </script>
