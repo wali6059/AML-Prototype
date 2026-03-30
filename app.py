@@ -375,10 +375,12 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
         with gr.Row():
             map_taxi_type = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
             map_metric = gr.Dropdown(["Tip Rate", "Avg Tip Amount"], value="Tip Rate", label="Metric")
+        render_btn = gr.Button("Render Map", variant="primary")
         map_display = gr.HTML(label="NYC Tip Map")
         gr.Markdown("### Zone breakdown")
         map_table = gr.Dataframe(label="Manhattan zones", interactive=False)
 
+        render_btn.click(fn=build_map_outputs, inputs=[map_taxi_type, map_metric], outputs=[map_display, map_table])
         map_taxi_type.change(fn=build_map_outputs, inputs=[map_taxi_type, map_metric], outputs=[map_display, map_table])
         map_metric.change(fn=build_map_outputs, inputs=[map_taxi_type, map_metric], outputs=[map_display, map_table])
 
