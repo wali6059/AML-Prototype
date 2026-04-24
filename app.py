@@ -4,63 +4,68 @@ import json
 from pathlib import Path
 
 import gradio as gr
-import joblib
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 
-from prototype_pipeline import ARTIFACT_DIR, MODEL_FEATURES, predict_tip
-
+from prototype_pipeline import ARTIFACT_DIR, MODEL_FEATURES, NUMERIC_FEATURES, CATEGORICAL_FEATURES, TabularTransformerMDN
 
 APP_DIR = Path(__file__).resolve().parent
-
 
 def load_artifacts() -> dict:
     metrics = json.loads((ARTIFACT_DIR / "metrics.json").read_text(encoding="utf-8"))
     monthly = pd.read_csv(ARTIFACT_DIR / "monthly_summary.csv")
-    hourly = pd.read_csv(ARTIFACT_DIR / "hourly_summary.csv")
-    zones = pd.read_csv(ARTIFACT_DIR / "zone_summary.csv")
-    sample_rows = pd.read_csv(ARTIFACT_DIR / "sample_rows.csv")
     zone_options = pd.read_csv(ARTIFACT_DIR / "zone_options.csv")
     dataset_notes = (ARTIFACT_DIR / "dataset_notes.md").read_text(encoding="utf-8")
     blog_background = (ARTIFACT_DIR / "blog_background.md").read_text(encoding="utf-8")
-    models = {
-        "yellow": joblib.load(ARTIFACT_DIR / "yellow_model_bundle.joblib"),
-        "green": joblib.load(ARTIFACT_DIR / "green_model_bundle.joblib"),
-    }
+    
+    models = {}
+    preprocessors = {}
+    
+    for taxi_type in ["yellow", "green"]:
+        checkpoint_path = ARTIFACT_DIR / f"{taxi_type}_v2_model.pth"
+        if checkpoint_path.exists():
+            checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+            model = TabularTransformerMDN(
+                num_numeric=checkpoint["config"]["num_numeric"],
+                cat_cardinalities=checkpoint["config"]["cat_cardinalities"]
+            )
+            model.load_state_dict(checkpoint["model_state"])
+            model.eval()
+            
+            models[taxi_type] = model
+            preprocessors[taxi_type] = checkpoint["preprocessor"]
+            
     return {
         "metrics": metrics,
         "monthly": monthly,
-        "hourly": hourly,
-        "zones": zones,
-        "sample_rows": sample_rows,
         "zone_options": zone_options,
         "dataset_notes": dataset_notes,
         "blog_background": blog_background,
         "models": models,
+        "preprocessors": preprocessors,
     }
-
 
 ARTIFACTS = load_artifacts()
 ZONE_CHOICES = ARTIFACTS["zone_options"]["zone"].tolist()
 DEFAULT_PICKUP = "Midtown Center"
 DEFAULT_DROPOFF = "Upper East Side North"
 
-
 def metrics_markdown() -> str:
-    blocks = ["## Baseline Results", ""]
+    blocks = ["## Deep Learning Baseline (Transformer + MDN)", ""]
     for taxi_type, values in ARTIFACTS["metrics"].items():
         blocks.append(f"### {taxi_type.title()} taxi")
-        blocks.append(f"- Test ROC-AUC: {values['roc_auc']:.3f}")
-        blocks.append(f"- Test F1 @ 0.50: {values['f1_at_0_5']:.3f}")
+        blocks.append(f"- **Test ROC-AUC**: {values['roc_auc']:.3f}")
+        blocks.append(f"- **Test Log-Tip RMSE**: {values['rmse_log_tip']:.3f}")
         blocks.append(f"- Tip-rate in test split: {values['tip_rate_test']:.3f}")
-        blocks.append(f"- Conditional tip RMSE on log scale: {values['rmse_log_tip']:.3f}")
         blocks.append("")
-    blocks.append("These models are trained on credit-card trips only because TLC `tip_amount` does not include cash tips.")
+    blocks.append("> Architecture: Tabular Transformer with Self-Attention and Mixture Density Network Head.")
     return "\n".join(blocks)
 
-
 def _build_feature_row(
-    taxi_type: str,
     pickup_zone: str,
     dropoff_zone: str,
     pickup_hour: int,
@@ -76,11 +81,11 @@ def _build_feature_row(
 ) -> dict:
     lookup = ARTIFACTS["zone_options"].rename(columns={"zone": "pickup_zone", "borough": "pickup_borough"})
     
-    p_borough_match = lookup.loc[lookup["pickup_zone"] == pickup_zone, "pickup_borough"]
-    pickup_borough = p_borough_match.iloc[0] if not p_borough_match.empty else "Unknown"
-
-    d_borough_match = lookup.loc[lookup["pickup_zone"] == dropoff_zone, "pickup_borough"]
-    dropoff_borough = d_borough_match.iloc[0] if not d_borough_match.empty else "Unknown"
+    p_match = lookup.loc[lookup["pickup_zone"] == pickup_zone, "pickup_borough"]
+    pickup_borough = p_match.iloc[0] if not p_match.empty else "Unknown"
+    
+    d_match = lookup.loc[lookup["pickup_zone"] == dropoff_zone, "borough"] 
+    dropoff_borough = d_match.iloc[0] if not d_match.empty else "Unknown"
     
     return {
         "pickup_hour": int(pickup_hour),
@@ -99,171 +104,96 @@ def _build_feature_row(
         "dropoff_zone": dropoff_zone,
     }
 
-
-def run_prediction(
-    taxi_type: str,
-    pickup_zone: str,
-    dropoff_zone: str,
-    pickup_hour: int,
-    pickup_weekday: int,
-    pickup_month: int,
-    trip_distance: float,
-    fare_amount: float,
-    trip_duration_minutes: float,
-    vendor_id: str,
-    passenger_bucket: str,
-    ratecode: str,
-    store_and_fwd_flag: str,
-):
-    feature_row = _build_feature_row(
-        taxi_type=taxi_type,
-        pickup_zone=pickup_zone,
-        dropoff_zone=dropoff_zone,
-        pickup_hour=pickup_hour,
-        pickup_weekday=pickup_weekday,
-        pickup_month=pickup_month,
-        trip_distance=trip_distance,
-        fare_amount=fare_amount,
-        trip_duration_minutes=trip_duration_minutes,
-        vendor_id=vendor_id,
-        passenger_bucket=passenger_bucket,
-        ratecode=ratecode,
-        store_and_fwd_flag=store_and_fwd_flag,
-    )
-    prediction = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+def run_prediction(*args):
+    taxi_type = args[0]
+    inputs = args[1:]
+    
+    feature_dict = _build_feature_row(*inputs)
+    df = pd.DataFrame([feature_dict])
+    
+    model = ARTIFACTS["models"][taxi_type]
+    preprocessor = ARTIFACTS["preprocessors"][taxi_type]
+    
+    X_raw = preprocessor.transform(df[MODEL_FEATURES])
+    num = torch.FloatTensor(X_raw[:, :len(NUMERIC_FEATURES)])
+    cat = torch.LongTensor(X_raw[:, len(NUMERIC_FEATURES):].astype(float) + 1)
+    
+    with torch.no_grad():
+        prob, pi, mu, sigma = model(num, cat)
+        cond_log_amt = torch.sum(pi * mu, dim=1).item()
+        cond_amt = np.expm1(cond_log_amt)
+        expected_tip = prob.item() * cond_amt
+        
     summary = (
-        f"Estimated chance of a recorded electronic tip: {prediction['tip_probability']:.1%}\n\n"
-        f"Predicted tip amount if a tip happens: ${prediction['conditional_tip']:.2f}\n\n"
-        f"Expected tip value for this ride: ${prediction['expected_tip']:.2f}"
+        f"### Model Output (Transformer + MDN)\n"
+        f"- **Estimated chance of a tip**: {prob.item():.1%}\n"
+        f"- **Predicted conditional amount**: ${max(0, cond_amt):.2f}\n"
+        f"- **Expected tip value**: ${max(0, expected_tip):.2f}\n\n"
+        f"*Note: The conditional amount is the mean of the learned Mixture Density distribution.*"
     )
-    detail = pd.DataFrame(
-        [
-            {"metric": "Tip probability", "value": round(prediction["tip_probability"], 4)},
-            {"metric": "Conditional tip amount", "value": round(prediction["conditional_tip"], 2)},
-            {"metric": "Expected tip amount", "value": round(prediction["expected_tip"], 2)},
-        ]
-    )
+    
+    detail = pd.DataFrame([
+        {"Metric": "Tip Probability", "Value": round(prob.item(), 4)},
+        {"Metric": "MDN Mean (log)", "Value": round(cond_log_amt, 4)},
+        {"Metric": "Expected Amount ($)", "Value": round(expected_tip, 2)}
+    ])
+    
     return summary, detail
-
 
 def plot_monthly_trends(taxi_type: str):
     df = ARTIFACTS["monthly"]
     subset = df[df["taxi_type"] == taxi_type].sort_values("pickup_month")
-    fig, ax1 = plt.subplots(figsize=(8, 4.5))
-    ax1.plot(subset["pickup_month"], subset["tip_rate"], marker="o", linewidth=2, color="#0b6e4f")
-    ax1.set_title(f"{taxi_type.title()} Taxi: Sampled Monthly Tip Rate")
-    ax1.set_xlabel("Month of 2025")
-    ax1.set_ylabel("Tip rate")
-    ax1.set_ylim(0, 1)
-    ax1.grid(alpha=0.2)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.plot(subset["pickup_month"], subset["tip_rate"], marker="s", color="#2e7d32")
+    ax.set_title(f"{taxi_type.title()} Taxi: Monthly Recorded Tip Rate")
+    ax.set_ylim(0, 1)
     return fig
 
-
-def plot_hourly_trends(taxi_type: str):
-    df = ARTIFACTS["hourly"]
-    subset = df[df["taxi_type"] == taxi_type].sort_values("pickup_hour")
-    fig, ax1 = plt.subplots(figsize=(8, 4.5))
-    ax1.bar(subset["pickup_hour"], subset["avg_tip_amount"], color="#f2a541")
-    ax1.set_title(f"{taxi_type.title()} Taxi: Average Recorded Tip by Pickup Hour")
-    ax1.set_xlabel("Pickup hour")
-    ax1.set_ylabel("Average tip amount ($)")
-    ax1.grid(axis="y", alpha=0.2)
-    return fig
-
-
-def top_zones_table(taxi_type: str):
-    subset = ARTIFACTS["zones"]
-    subset = subset[subset["taxi_type"] == taxi_type].copy()
-    subset = subset[subset["trips"] >= 100]
-    subset = subset.head(15)[["pickup_borough", "pickup_zone", "trips", "tip_rate", "avg_tip_amount"]]
-    subset["tip_rate"] = subset["tip_rate"].round(3)
-    subset["avg_tip_amount"] = subset["avg_tip_amount"].round(2)
-    return subset
-
-
-with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
-    gr.Markdown(
-        """
-        # Tip or Skip
-        A lightweight prototype for NYC taxi tipping prediction built from 2025 TLC yellow and green taxi trip records.
-
-        This Space demonstrates meaningful progress for an Applied Machine Learning project:
-        1. the dataset is identified and processed,
-        2. an initial two-stage ML pipeline is trained,
-        3. the background section of the technical write-up is started.
-        """
-    )
+with gr.Blocks(title="NYC Taxi Tip - Deep Learning Prototype") as demo:
+    gr.Markdown("# Tip or Skip: GenAI Edition")
+    gr.Markdown("Prototype utilizing a **Tabular Transformer** backbone and **MDN** heads.")
 
     with gr.Tab("Overview"):
         gr.Markdown(metrics_markdown())
         gr.Markdown(ARTIFACTS["dataset_notes"])
-        gr.Dataframe(
-            ARTIFACTS["sample_rows"].head(20),
-            label="Sampled cleaned rows used for the prototype",
-            interactive=False,
-        )
 
     with gr.Tab("Predict"):
-        gr.Markdown(
-            "Use the form below to estimate tip behavior for a hypothetical **credit-card** trip. "
-            "The model predicts recorded electronic tips only."
-        )
         with gr.Row():
-            taxi_type = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
-            pickup_zone = gr.Dropdown(ZONE_CHOICES, value=DEFAULT_PICKUP, label="Pickup zone")
-            dropoff_zone = gr.Dropdown(ZONE_CHOICES, value=DEFAULT_DROPOFF, label="Dropoff zone")
+            taxi_type_in = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi Type")
+            p_zone_in = gr.Dropdown(ZONE_CHOICES, value=DEFAULT_PICKUP, label="Pickup Zone")
+            d_zone_in = gr.Dropdown(ZONE_CHOICES, value=DEFAULT_DROPOFF, label="Dropoff Zone")
         with gr.Row():
-            pickup_hour = gr.Slider(0, 23, value=18, step=1, label="Pickup hour")
-            pickup_weekday = gr.Slider(0, 6, value=4, step=1, label="Pickup weekday (0=Mon)")
-            pickup_month = gr.Slider(1, 12, value=6, step=1, label="Pickup month")
+            hour_in = gr.Slider(0, 23, value=18, label="Hour")
+            wday_in = gr.Slider(0, 6, value=4, label="Weekday (0=Mon)")
+            month_in = gr.Slider(1, 12, value=6, label="Month")
         with gr.Row():
-            trip_distance = gr.Slider(0.1, 30.0, value=3.4, step=0.1, label="Trip distance (miles)")
-            fare_amount = gr.Slider(3.0, 120.0, value=18.0, step=0.5, label="Fare amount ($)")
-            trip_duration_minutes = gr.Slider(1.0, 120.0, value=16.0, step=1.0, label="Trip duration (minutes)")
+            dist_in = gr.Slider(0.1, 30.0, value=3.0, label="Distance (mi)")
+            fare_in = gr.Slider(3.0, 100.0, value=15.0, label="Fare ($)")
+            dur_in = gr.Slider(1, 120, value=15, label="Duration (min)")
         with gr.Row():
-            vendor_id = gr.Dropdown(["1", "2", "6", "7"], value="1", label="Vendor")
-            passenger_bucket = gr.Dropdown(["Unknown", "1", "2", "3", "4", "5", "6+"], value="1", label="Passenger count bucket")
-            ratecode = gr.Dropdown(["1", "2", "3", "4", "5", "6", "99"], value="1", label="Rate code")
-            store_and_fwd_flag = gr.Dropdown(["N", "Y", "Unknown"], value="N", label="Store and forward flag")
-        predict_button = gr.Button("Predict tip outcome", variant="primary")
-        prediction_text = gr.Markdown()
-        prediction_table = gr.Dataframe(interactive=False, label="Prediction details")
-        predict_button.click(
+            vend_in = gr.Dropdown(["1", "2"], value="1", label="Vendor")
+            pass_in = gr.Dropdown(["1", "2", "3", "4", "5", "6+"], value="1", label="Passengers")
+            rate_in = gr.Dropdown(["1", "2", "3", "4", "5"], value="1", label="Rate Code")
+            flag_in = gr.Dropdown(["N", "Y"], value="N", label="Store & Fwd")
+            
+        btn = gr.Button("Estimate Tip Distribution", variant="primary")
+        out_text = gr.Markdown()
+        out_table = gr.Dataframe(interactive=False)
+        
+        btn.click(
             fn=run_prediction,
-            inputs=[
-                taxi_type,
-                pickup_zone,
-                dropoff_zone,
-                pickup_hour,
-                pickup_weekday,
-                pickup_month,
-                trip_distance,
-                fare_amount,
-                trip_duration_minutes,
-                vendor_id,
-                passenger_bucket,
-                ratecode,
-                store_and_fwd_flag,
-            ],
-            outputs=[prediction_text, prediction_table],
+            inputs=[taxi_type_in, p_zone_in, d_zone_in, hour_in, wday_in, month_in, dist_in, fare_in, dur_in, vend_in, pass_in, rate_in, flag_in],
+            outputs=[out_text, out_table]
         )
 
     with gr.Tab("Explore"):
-        taxi_type_chart = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
-        monthly_plot = gr.Plot(label="Monthly trend")
-        hourly_plot = gr.Plot(label="Hourly trend")
-        zone_table = gr.Dataframe(label="Top pickup zones by tip rate", interactive=False)
-        taxi_type_chart.change(plot_monthly_trends, inputs=taxi_type_chart, outputs=monthly_plot)
-        taxi_type_chart.change(plot_hourly_trends, inputs=taxi_type_chart, outputs=hourly_plot)
-        taxi_type_chart.change(top_zones_table, inputs=taxi_type_chart, outputs=zone_table)
-        demo.load(plot_monthly_trends, inputs=taxi_type_chart, outputs=monthly_plot)
-        demo.load(plot_hourly_trends, inputs=taxi_type_chart, outputs=hourly_plot)
-        demo.load(top_zones_table, inputs=taxi_type_chart, outputs=zone_table)
+        taxi_sel = gr.Dropdown(["yellow", "green"], value="yellow", label="Select Taxi")
+        plot_out = gr.Plot()
+        taxi_sel.change(plot_monthly_trends, inputs=taxi_sel, outputs=plot_out)
+        demo.load(plot_monthly_trends, inputs=taxi_sel, outputs=plot_out)
 
-    with gr.Tab("Blog Draft"):
+    with gr.Tab("Technical Blog"):
         gr.Markdown(ARTIFACTS["blog_background"])
-
 
 if __name__ == "__main__":
     demo.launch()
-
