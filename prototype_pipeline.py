@@ -18,7 +18,7 @@ from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 from sklearn.metrics import roc_auc_score, f1_score
 
 ROOT_DIR = Path(__file__).resolve().parent
-RAW_DATA_DIR = ROOT_DIR.parent
+RAW_DATA_DIR = ROOT_DIR / "data" 
 ARTIFACT_DIR = ROOT_DIR / "artifacts"
 
 NUMERIC_FEATURES = [
