@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import shutil
+import json
 from pathlib import Path
-
 import pandas as pd
+import torch
 
 from prototype_pipeline import (
     ARTIFACT_DIR,
@@ -11,60 +12,81 @@ from prototype_pipeline import (
     RAW_DATA_DIR,
     load_zone_lookup,
     sample_taxi_data,
-    save_metrics,
+    train_models,
     save_model_bundle,
     save_summary_tables,
-    train_models,
 )
 
+def save_metrics(all_metrics: Dict[str, Dict[str, float]], output_dir: Path | None = None) -> None:
+    output_dir = output_dir or ARTIFACT_DIR
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with (output_dir / "metrics.json").open("w", encoding="utf-8") as handle:
+        json.dump(all_metrics, handle, indent=2)
 
 def copy_blog_background() -> None:
     source = ROOT_DIR / "blog_background.md"
     target = ARTIFACT_DIR / "blog_background.md"
-    shutil.copyfile(source, target)
-
+    if source.exists():
+        shutil.copyfile(source, target)
+    else:
+        print(f"Warning: {source} not found, skipping copy.")
 
 def write_dataset_card() -> None:
     zone_lookup = load_zone_lookup(RAW_DATA_DIR)
     lines = [
         "# Dataset Notes",
         "",
-        "This Space ships compact artifacts generated from the NYC TLC 2025 taxi trip data stored locally during development.",
+        "This Space ships compact artifacts generated from the NYC TLC 2025 taxi trip data.",
         "",
-        "- Raw data directory during development: the parent `Prototype/` folder.",
-        "- Source tables: 12 monthly yellow taxi parquet files and 12 monthly green taxi parquet files.",
-        f"- Taxi zones available: {len(zone_lookup)} location IDs.",
-        "- Training scope: credit-card trips only, because TLC `tip_amount` excludes cash tips.",
-        "- Cleaning rules: dropped rows with nonpositive fare, nonpositive trip distance, and nonpositive trip duration.",
-        "- Split policy: January-September train, October validation, November-December test.",
+        "## Technical Specifications",
+        f"- **Model Architecture**: Tabular Transformer with Mixture Density Network (MDN) Head.",
+        "- **Training Scope**: Credit-card trips only (recorded electronic tips).",
+        "- **Cleaning**: Dropped nonpositive fare, distance, and duration.",
+        f"- **Taxi Zones**: {len(zone_lookup)} location IDs integrated.",
+        "- **Split Policy**: Jan-Sep Train, Oct Valid, Nov-Dec Test.",
         "",
-        "The app reads only saved artifacts and does not require the raw parquet files at runtime.",
+        "The application utilizes pre-trained PyTorch weights and does not require raw Parquet files at runtime.",
     ]
     (ARTIFACT_DIR / "dataset_notes.md").write_text("\n".join(lines), encoding="utf-8")
 
-
 def main() -> None:
+    print(f"Initializing artifact generation at {ARTIFACT_DIR}...")
+    if ARTIFACT_DIR.exists():
+        shutil.rmtree(ARTIFACT_DIR)
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+    
     all_metrics = {}
     combined_frames = []
 
     for taxi_type in ("yellow", "green"):
-        print(f"Loading and sampling {taxi_type} taxi data...")
+        print(f"\n--- Processing {taxi_type.upper()} Taxi Data ---")
+
+        print(f"Loading and sampling {taxi_type} records...")
         df = sample_taxi_data(taxi_type=taxi_type, base_dir=RAW_DATA_DIR)
         combined_frames.append(df)
-        print(f"Training models for {taxi_type} taxi data on {len(df):,} sampled rows...")
-        classifier, regressor, metrics = train_models(df)
-        save_model_bundle(classifier, regressor, taxi_type)
-        all_metrics[taxi_type] = metrics
-        print(f"Saved {taxi_type} model bundle.")
 
+        print(f"Training Deep Learning model on {len(df):,} sampled rows...")
+        model, preprocessor, metrics = train_models(df)
+
+        save_model_bundle(model, preprocessor, taxi_type)
+        all_metrics[taxi_type] = metrics
+        print(f"Saved {taxi_type} PyTorch model bundle and metrics.")
+
+    print("\n--- Finalizing Artifacts ---")
     combined = pd.concat(combined_frames, ignore_index=True)
+    
+    print("Generating summary tables for visualization...")
     save_summary_tables(combined)
+    
+    print("Saving global metrics...")
     save_metrics(all_metrics)
+    
+    print("Writing metadata and copying blog background...")
     copy_blog_background()
     write_dataset_card()
-    print(f"Artifacts written to {ARTIFACT_DIR}")
-
+    
+    print(f"\nSuccess! All artifacts written to {ARTIFACT_DIR}")
+    print("You can now launch the app with: python app.py")
 
 if __name__ == "__main__":
     main()
