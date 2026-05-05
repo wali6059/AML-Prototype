@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from tip_or_skip.config import ARTIFACT_DIR, ensure_directories
 
-A_PLUS_DIR = ARTIFACT_DIR / "a_plus"
+EXPERIMENT_DIR = ARTIFACT_DIR / "experiments"
 
 
 class ChatRows(Dataset):
@@ -106,14 +106,14 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=4)
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--max-length", type=int, default=512)
-    parser.add_argument("--output-dir", default=str(A_PLUS_DIR / "driver_llm"))
+    parser.add_argument("--output-dir", default=str(EXPERIMENT_DIR / "driver_llm"))
     parser.add_argument("--lora", action="store_true")
     parser.add_argument("--push-to-hub", action="store_true")
     parser.add_argument("--hub-model-id", default="")
     args = parser.parse_args()
 
     ensure_directories()
-    A_PLUS_DIR.mkdir(parents=True, exist_ok=True)
+    EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
@@ -125,8 +125,8 @@ def main() -> None:
 
         config = LoraConfig(r=16, lora_alpha=32, lora_dropout=0.05, task_type="CAUSAL_LM")
         model = get_peft_model(model, config)
-    train_rows = read_jsonl(A_PLUS_DIR / "llm_train.jsonl")
-    eval_rows = read_jsonl(A_PLUS_DIR / "llm_eval.jsonl")
+    train_rows = read_jsonl(EXPERIMENT_DIR / "llm_train.jsonl")
+    eval_rows = read_jsonl(EXPERIMENT_DIR / "llm_eval.jsonl")
     train_ds = ChatRows(train_rows, tokenizer, args.max_length)
     eval_ds = ChatRows(eval_rows, tokenizer, args.max_length)
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, collate_fn=lambda b: collate(b, tokenizer))
@@ -169,9 +169,9 @@ def main() -> None:
         model.push_to_hub(repo_id)
         tokenizer.push_to_hub(repo_id)
         metrics["hub_model_id"] = repo_id
-    pd.DataFrame(history).to_csv(A_PLUS_DIR / "llm_training_history.csv", index=False)
-    pd.DataFrame(generations).to_csv(A_PLUS_DIR / "llm_generation_eval.csv", index=False)
-    (A_PLUS_DIR / "llm_finetune_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    pd.DataFrame(history).to_csv(EXPERIMENT_DIR / "llm_training_history.csv", index=False)
+    pd.DataFrame(generations).to_csv(EXPERIMENT_DIR / "llm_generation_eval.csv", index=False)
+    (EXPERIMENT_DIR / "llm_finetune_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     print(json.dumps(metrics, indent=2))
 
 

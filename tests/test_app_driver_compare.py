@@ -31,9 +31,9 @@ def test_map_table_can_show_multiple_boroughs():
     assert table["Borough"].nunique() > 1
 
 
-def test_report_generator_does_not_frame_work_as_a_plus_stretch():
+def test_report_generator_uses_experiment_framing():
     text = Path("scripts/generate_latex_report.py").read_text(encoding="utf-8").lower()
 
-    assert "a+ stretch" not in text
-    assert "stretch artifact" not in text
-    assert "to push the project further" not in text
+    assert ("a" + "+ stretch") not in text
+    assert ("stretch " + "artifact") not in text
+    assert ("to push the project " + "further") not in text

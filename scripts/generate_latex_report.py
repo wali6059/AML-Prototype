@@ -479,14 +479,14 @@ def main() -> None:
     metrics = pd.read_csv(REPORT_DIR / "final_metrics.csv")
     subgroup = pd.read_csv(REPORT_DIR / "subgroup_metrics.csv") if (REPORT_DIR / "subgroup_metrics.csv").exists() else pd.DataFrame()
     zones = pd.read_csv(REPORT_DIR / "zone_risk_summary.csv") if (REPORT_DIR / "zone_risk_summary.csv").exists() else pd.DataFrame()
-    a_plus_dir = ARTIFACT_DIR / "a_plus"
+    experiment_dir = ARTIFACT_DIR / "experiments"
     extra = {
-        "ablation": _read_csv(a_plus_dir / "ablation_metrics.csv"),
-        "calibration": _read_csv(a_plus_dir / "calibration_bins.csv"),
-        "graph": _read_csv(a_plus_dir / "graph_metrics.csv"),
-        "copilot": _read_csv(a_plus_dir / "copilot_eval_summary.csv"),
-        "sequence": _read_json(a_plus_dir / "sequence_metrics.json"),
-        "llm": _read_json(a_plus_dir / "llm_finetune_metrics.json"),
+        "ablation": _read_csv(experiment_dir / "ablation_metrics.csv"),
+        "calibration": _read_csv(experiment_dir / "calibration_bins.csv"),
+        "graph": _read_csv(experiment_dir / "graph_metrics.csv"),
+        "copilot": _read_csv(experiment_dir / "copilot_eval_summary.csv"),
+        "sequence": _read_json(experiment_dir / "sequence_metrics.json"),
+        "llm": _read_json(experiment_dir / "llm_finetune_metrics.json"),
     }
     metric_rows = _table_rows(metrics)
     split_rows = _split_table(summary)

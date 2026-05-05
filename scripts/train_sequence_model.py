@@ -20,7 +20,7 @@ matplotlib.use("Agg")
 from tip_or_skip.config import ARTIFACT_DIR, FIGURE_DIR, ensure_directories
 from tip_or_skip.data import load_dataset
 
-A_PLUS_DIR = ARTIFACT_DIR / "a_plus"
+EXPERIMENT_DIR = ARTIFACT_DIR / "experiments"
 
 
 class TipLSTM(nn.Module):
@@ -119,7 +119,7 @@ def main() -> None:
     args = parser.parse_args()
 
     ensure_directories()
-    A_PLUS_DIR.mkdir(parents=True, exist_ok=True)
+    EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
     frame = _matrix(_hourly())
     xs, ys, splits = _windows(frame, args.lookback)
     mean = xs[np.array([s == "train" for s in splits])].mean(axis=(0, 1), keepdims=True)
@@ -166,10 +166,10 @@ def main() -> None:
     naive = naive * std.squeeze()[[1, 2]] + mean.squeeze()[[1, 2]]
     metrics = _metrics(pred, y, naive)
     metrics.update({"epochs": args.epochs, "lookback": args.lookback, "device": str(device), "test_rows": int(len(y))})
-    pd.DataFrame(history).to_csv(A_PLUS_DIR / "sequence_training_history.csv", index=False)
-    pd.DataFrame({"tip_rate_actual": y[:, 0], "tip_rate_pred": pred[:, 0], "avg_tip_actual": y[:, 1], "avg_tip_pred": pred[:, 1]}).to_csv(A_PLUS_DIR / "sequence_predictions.csv", index=False)
-    (A_PLUS_DIR / "sequence_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-    torch.save({"model": model.state_dict(), "mean": mean, "std": std, "lookback": args.lookback}, A_PLUS_DIR / "sequence_lstm.pt")
+    pd.DataFrame(history).to_csv(EXPERIMENT_DIR / "sequence_training_history.csv", index=False)
+    pd.DataFrame({"tip_rate_actual": y[:, 0], "tip_rate_pred": pred[:, 0], "avg_tip_actual": y[:, 1], "avg_tip_pred": pred[:, 1]}).to_csv(EXPERIMENT_DIR / "sequence_predictions.csv", index=False)
+    (EXPERIMENT_DIR / "sequence_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    torch.save({"model": model.state_dict(), "mean": mean, "std": std, "lookback": args.lookback}, EXPERIMENT_DIR / "sequence_lstm.pt")
 
     hist = pd.DataFrame(history)
     fig, ax = plt.subplots(figsize=(7.5, 4.2))
