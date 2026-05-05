@@ -403,6 +403,12 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
 </section>
 
 <section>
+  <h2>Related Work and Positioning</h2>
+  <p>The modeling choices are tied to several standard ideas from the course and from applied ML literature. Hurdle models separate whether an event happens from how large the positive outcome is, which matches the structure of electronic taxi tips: many trips have no recorded electronic tip, while positive tips form a skewed continuous amount. Mixture Density Networks, introduced by Bishop, extend this idea by predicting a full conditional density instead of only a mean. That is why the deep model returns expected tips, medians, lower-tail quantiles, and interval coverage.</p>
+  <p>The comparison with boosted trees is also deliberate. Tabular Transformer work argues that attention over categorical and numeric feature embeddings can learn useful contextual interactions, but modern gradient-boosted trees remain very strong on structured tabular data. The project therefore treats the tree hurdle model as a serious baseline and interprets the Transformer-MDN result as a distributional modeling contribution rather than as a guaranteed accuracy win. The later experiments connect the same tipping problem to probability calibration, graph convolution over taxi-zone flows, LSTM sequence prediction over hourly borough histories, and low-rank language-model adaptation for the driver copilot.</p>
+</section>
+
+<section>
   <h2>Dataset</h2>
   <p>The dataset is built from official NYC TLC Yellow and Green taxi monthly trip records for 2024 and 2025. We keep credit-card trips because the TLC <code>tip_amount</code> field records electronic tips and does not capture cash tips. Rows with nonpositive fare, distance, duration, or invalid month alignment are removed. Pickup and dropoff location identifiers are joined to TLC taxi-zone names and boroughs so the model can learn both spatial identifiers and interpretable geographic groupings.</p>
   <p>The frozen model-ready package contains <strong>{summary['rows']:,}</strong> rows, <strong>{summary['columns']}</strong> columns, and an overall recorded electronic tip rate of <strong>{summary['tip_rate']:.1%}</strong>. The split is chronological, so the held-out test set evaluates future-year generalization rather than random-row memorization.</p>
@@ -460,6 +466,19 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
   <p>The largest limitation is the target itself. TLC <code>tip_amount</code> excludes cash tips, so the model predicts recorded electronic tipping behavior rather than all tipping. The dataset is a reproducible project-scale sample, not the full raw TLC archive. Zone-level rankings can also be unstable for small sample zones, which is why the demo exposes observed trip counts and lower-tail quantiles instead of only showing a sorted leaderboard.</p>
   <p>The main technical limitation is that the deep model did not outperform the strongest tree baseline on point metrics. This is not hidden in the report because the project goal is model-behavior insight, not a Kaggle-style accuracy claim. The result suggests that, for structured taxi-trip data, distributional outputs and uncertainty may be a better reason to use the deep model than marginal point-prediction accuracy.</p>
   <p>A second limitation is causality. The model can identify associations between trip context and recorded tips, but it cannot prove that changing a route or pickup zone will cause a higher tip for a specific driver. Demand, passenger mix, traffic, airport rules, and unobserved rider behavior all matter. For that reason, the shift planner should be read as an exploratory ranking tool rather than a prescriptive routing system.</p>
+</section>
+
+<section>
+  <h2>References</h2>
+  <ul>
+    <li>New York City Taxi and Limousine Commission. TLC Trip Record Data and Data Dictionaries.</li>
+    <li>Bishop, C. M. Mixture Density Networks. Aston University technical report, 1994.</li>
+    <li>Huang, X. et al. TabTransformer: Tabular Data Modeling Using Contextual Embeddings. 2020.</li>
+    <li>Guo, C. et al. On Calibration of Modern Neural Networks. ICML, 2017.</li>
+    <li>Kipf, T. N. and Welling, M. Semi-Supervised Classification with Graph Convolutional Networks. ICLR, 2017.</li>
+    <li>Hochreiter, S. and Schmidhuber, J. Long Short-Term Memory. Neural Computation, 1997.</li>
+    <li>Hu, E. J. et al. LoRA: Low-Rank Adaptation of Large Language Models. 2021.</li>
+  </ul>
 </section>
 
 <section>
