@@ -3,3 +3,7 @@
 __pycache__/
 *.py[cod]
 .env
+artifacts/final/
+artifacts/final_report/*.pdf
+artifacts/final_report/figures/*.png
+local_server_logs/

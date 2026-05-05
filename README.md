@@ -64,10 +64,17 @@ The merged app also includes a Manhattan zone map view built with `folium`, usin
 ## What The Space Shows
 
 - An overview tab with model metrics, dataset notes, and sample cleaned rows.
+- A grounded `Ask The Data` chat tab that answers questions from the frozen dataset summary, final metrics, subgroup table, and zone-risk table.
 - A prediction tab where a user enters a hypothetical trip and gets the predicted tip probability, conditional tip, and expected tip.
+- A what-if sensitivity panel that sweeps pickup hour, fare, distance, or duration to show how predictions move.
 - An exploration tab with precomputed monthly, hourly, and zone-level summaries.
+- A model lab tab with final model comparisons, frozen-dataset monthly profiles, and borough subgroup metrics.
 - A maps tab that visualizes Manhattan tipping patterns.
+- A final results tab with the self-contained offline `index.html`, final metrics, and available local report assets.
+- A shift planner tab that ranks zones by expected tip, lower-tail risk, or tip probability.
 - A blog tab that displays the project background text from `blog_background.md`.
+
+The chat assistant is deterministic by default so the demo works without secrets. If a Hugging Face Inference API model is configured through `HF_INFERENCE_MODEL` plus `HF_TOKEN` or `HUGGINGFACEHUB_API_TOKEN`, the app can rewrite grounded answers through that hosted model while still using the project artifacts as the source of truth.
 
 ## Local build steps
 
@@ -84,6 +91,24 @@ python build_artifacts.py
 ```bash
 python app.py
 ```
+
+## Final project report outputs
+
+The final report generator writes both a paper-style PDF and an offline HTML blog:
+
+```bash
+python scripts/generate_latex_report.py
+```
+
+Important outputs:
+
+- `../report/Tip_or_Skip_Final_Report.pdf`
+- `../report/Tip_or_Skip_Final_Report.tex`
+- `../report/index.html`
+- `artifacts/final_report/`
+
+The CourseWorks guideline requires a local `index.html`; the generated `../report/index.html` is self-contained and embeds the report figures directly.
+The live Space tracks the text/HTML report artifacts and generates interactive plots in the app. Keep the PDF as a local submission artifact unless binary storage is configured for the Hugging Face Space.
 
 ## Deploying to Hugging Face
 
@@ -105,10 +130,6 @@ To publish it on GitHub Pages:
 
 The TLC dictionaries state that `tip_amount` does not include cash tips. For that reason, this prototype trains on credit-card trips only and frames the task as predicting recorded electronic tip behavior.
 
-## Next Steps
+## Final modeling note
 
-- Replace the baseline tree models with a stronger deep tabular architecture.
-- Add richer spatial features from the taxi-zone shapefiles and zone adjacency structure.
-- Improve evaluation with stronger calibration analysis, threshold tuning, and subgroup breakdowns.
-- Extend the second stage from point prediction toward a probabilistic or mixture-based conditional tip model.
-- Add visual outputs that better summarize where and when high expected tips occur across NYC.
+The boosted tree hurdle baseline is the strongest point-prediction model on the final held-out 2025 split. The Transformer-MDN remains part of the final system because it contributes a distribution over positive tips, which powers uncertainty intervals and risk-aware zone ranking.

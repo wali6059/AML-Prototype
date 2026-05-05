@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import urllib.request
 from pathlib import Path
 
@@ -20,6 +21,11 @@ from prototype_pipeline import ARTIFACT_DIR, predict_tip
 matplotlib.use("Agg")
 
 ROOT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT_DIR / "src"))
+
+from tip_or_skip.fact_assistant import answer_question, build_fact_context, fact_cards_markdown
+from tip_or_skip.shift_planner import rank_destinations
+
 TLC_ZONES_URL = (
     "https://data.cityofnewyork.us/api/views/8meu-9t5y/rows.geojson?accessType=DOWNLOAD"
 )
@@ -65,6 +71,23 @@ def _load_zone_centroids() -> dict[str, tuple[float, float]]:
 
 def load_artifacts() -> dict:
     metrics = json.loads((ARTIFACT_DIR / "metrics.json").read_text(encoding="utf-8"))
+    packaged_summary_path = ARTIFACT_DIR / "final_report" / "build_summary.json"
+    summary_path = (
+        packaged_summary_path
+        if packaged_summary_path.exists()
+        else ROOT_DIR.parent / "final_dataset" / "build_summary.json"
+    )
+    final_summary = (
+        json.loads(summary_path.read_text(encoding="utf-8"))
+        if summary_path.exists()
+        else {
+            "rows": 0,
+            "columns": 0,
+            "tip_rate": 0.0,
+            "split_counts": {},
+            "taxi_type_counts": {},
+        }
+    )
     monthly = pd.read_csv(ARTIFACT_DIR / "monthly_summary.csv")
     hourly = pd.read_csv(ARTIFACT_DIR / "hourly_summary.csv")
     zones = pd.read_csv(ARTIFACT_DIR / "zone_summary.csv")
@@ -76,8 +99,20 @@ def load_artifacts() -> dict:
         "yellow": joblib.load(ARTIFACT_DIR / "yellow_model_bundle.joblib"),
         "green": joblib.load(ARTIFACT_DIR / "green_model_bundle.joblib"),
     }
+    final_dir = ARTIFACT_DIR / "final"
+    packaged_report_dir = ARTIFACT_DIR / "final_report"
+    report_dir = packaged_report_dir if packaged_report_dir.exists() else ROOT_DIR.parent / "report"
+    final_metrics_path = report_dir / "final_metrics.csv"
+    zone_risk_path = report_dir / "zone_risk_summary.csv"
+    subgroup_path = report_dir / "subgroup_metrics.csv"
+    monthly_profile_path = report_dir / "monthly_profile_for_report.csv"
+    final_metrics = pd.read_csv(final_metrics_path) if final_metrics_path.exists() else pd.DataFrame()
+    zone_risk = pd.read_csv(zone_risk_path) if zone_risk_path.exists() else pd.DataFrame()
+    subgroup_metrics = pd.read_csv(subgroup_path) if subgroup_path.exists() else pd.DataFrame()
+    monthly_profile = pd.read_csv(monthly_profile_path) if monthly_profile_path.exists() else pd.DataFrame()
     return {
         "metrics": metrics,
+        "final_summary": final_summary,
         "monthly": monthly,
         "hourly": hourly,
         "zones": zones,
@@ -86,10 +121,22 @@ def load_artifacts() -> dict:
         "dataset_notes": dataset_notes,
         "blog_background": blog_background,
         "models": models,
+        "final_dir": final_dir,
+        "report_dir": report_dir,
+        "final_metrics": final_metrics,
+        "zone_risk": zone_risk,
+        "subgroup_metrics": subgroup_metrics,
+        "monthly_profile": monthly_profile,
     }
 
 
 ARTIFACTS = load_artifacts()
+FACT_CONTEXT = build_fact_context(
+    ARTIFACTS["final_summary"],
+    ARTIFACTS["final_metrics"],
+    ARTIFACTS["zone_risk"],
+    ARTIFACTS["subgroup_metrics"],
+)
 ZONE_CHOICES = ARTIFACTS["zone_options"]["zone"].tolist()
 DEFAULT_PICKUP = "Midtown Center"
 DEFAULT_DROPOFF = "Upper East Side North"
@@ -108,6 +155,216 @@ def metrics_markdown() -> str:
         "These models are trained on credit-card trips only because TLC `tip_amount` does not include cash tips."
     )
     return "\n".join(blocks)
+
+
+def final_results_markdown() -> str:
+    metrics = ARTIFACTS["final_metrics"]
+    if metrics.empty:
+        return "Final L4-trained artifacts have not been generated in this Space checkout yet."
+
+    best = metrics.sort_values("expected_tip_mae").iloc[0]
+    blocks = [
+        "## Final 2024-2025 L4 Training Results",
+        "",
+        f"Best point-prediction model: **{best['model']}** with expected-tip MAE **${best['expected_tip_mae']:.2f}** on the held-out 2025 split.",
+        "",
+    ]
+    for _, row in metrics.iterrows():
+        blocks.append(f"### {row['model']}")
+        blocks.append(f"- ROC-AUC: {row['class_roc_auc']:.3f}")
+        blocks.append(f"- Brier score: {row['class_brier']:.3f}")
+        blocks.append(f"- ECE: {row['class_ece']:.3f}")
+        blocks.append(f"- Log-tip RMSE: {row['logtip_rmse']:.3f}")
+        blocks.append(f"- Expected-tip MAE: ${row['expected_tip_mae']:.2f}")
+        if "interval80_coverage" in row and pd.notna(row["interval80_coverage"]):
+            blocks.append(f"- MDN 80% interval coverage: {row['interval80_coverage']:.3f}")
+        blocks.append("")
+    blocks.append("Dataset split: train Jan-Sep 2024, validation Oct-Dec 2024, test all 2025.")
+    return "\n".join(blocks)
+
+
+def _call_optional_hf_llm(question: str, grounded_answer: str) -> str:
+    token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
+    model_id = os.getenv("HF_INFERENCE_MODEL", "").strip()
+    if not token or not model_id:
+        return grounded_answer
+
+    prompt = (
+        "You are a concise data-science assistant for an Applied Machine Learning project about NYC taxi tipping. "
+        "Answer only from the grounded facts below. If the facts do not support a claim, say so.\n\n"
+        f"Question: {question}\n\n"
+        f"Grounded facts:\n{grounded_answer}\n\n"
+        "Answer:"
+    )
+    request = urllib.request.Request(
+        f"https://api-inference.huggingface.co/models/{model_id}",
+        data=json.dumps(
+            {
+                "inputs": prompt,
+                "parameters": {"max_new_tokens": 220, "temperature": 0.2, "return_full_text": False},
+            }
+        ).encode("utf-8"),
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=25) as response:
+            payload = json.loads(response.read())
+    except Exception:
+        return grounded_answer
+    if isinstance(payload, list) and payload and "generated_text" in payload[0]:
+        generated = str(payload[0]["generated_text"]).strip()
+        return generated or grounded_answer
+    if isinstance(payload, dict) and "generated_text" in payload:
+        generated = str(payload["generated_text"]).strip()
+        return generated or grounded_answer
+    return grounded_answer
+
+
+def tipping_assistant(message: str, history):
+    grounded = answer_question(message, FACT_CONTEXT)
+    answer = _call_optional_hf_llm(message, grounded)
+    return answer + "\n\n_Source: frozen project dataset, final model metrics, and report artifacts._"
+
+
+def model_comparison_table(sort_by: str):
+    metrics = ARTIFACTS["final_metrics"]
+    if metrics.empty:
+        return pd.DataFrame({"message": ["Final metrics are not available."]})
+    sort_map = {
+        "Expected Tip MAE": ("expected_tip_mae", True),
+        "ROC-AUC": ("class_roc_auc", False),
+        "Calibration Error": ("class_ece", True),
+        "Log Tip RMSE": ("logtip_rmse", True),
+    }
+    column, ascending = sort_map[sort_by]
+    display_cols = [
+        "model",
+        "class_roc_auc",
+        "class_log_loss",
+        "class_brier",
+        "class_ece",
+        "class_f1",
+        "logtip_rmse",
+        "expected_tip_mae",
+        "interval80_coverage",
+    ]
+    available = [col for col in display_cols if col in metrics.columns]
+    out = metrics.sort_values(column, ascending=ascending)[available].copy()
+    return out.round(4)
+
+
+def plot_final_metric(metric_label: str):
+    metrics = ARTIFACTS["final_metrics"]
+    metric_map = {
+        "Expected Tip MAE": ("expected_tip_mae", "Lower is better", "$"),
+        "ROC-AUC": ("class_roc_auc", "Higher is better", ""),
+        "Calibration Error": ("class_ece", "Lower is better", ""),
+        "Log Tip RMSE": ("logtip_rmse", "Lower is better", ""),
+        "F1": ("class_f1", "Higher is better", ""),
+    }
+    column, subtitle, prefix = metric_map[metric_label]
+    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    colors = ["#176b54", "#e09f3e", "#335c67"]
+    ax.bar(metrics["model"], metrics[column], color=colors[: len(metrics)])
+    ax.set_title(f"{metric_label} ({subtitle})")
+    ax.grid(axis="y", alpha=0.25)
+    ax.tick_params(axis="x", rotation=15)
+    if prefix == "$":
+        ax.set_ylabel("Dollars")
+    fig.tight_layout()
+    return fig
+
+
+def final_monthly_plot(taxi_type: str, metric_label: str):
+    monthly = ARTIFACTS["monthly_profile"]
+    if monthly.empty:
+        return plot_monthly_trends(taxi_type)
+    metric_col = "tip_rate" if metric_label == "Tip Rate" else "avg_tip"
+    subset = monthly[monthly["taxi_type"] == taxi_type].sort_values(["pickup_year", "pickup_month"])
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.plot(subset["year_month"], subset[metric_col], marker="o", linewidth=2.2, color="#335c67")
+    ax.set_title(f"{taxi_type.title()} Taxi {metric_label} Across the Frozen Dataset")
+    ax.set_xlabel("Pickup month")
+    ax.set_ylabel("Tip rate" if metric_col == "tip_rate" else "Average tip ($)")
+    ax.tick_params(axis="x", rotation=50)
+    ax.grid(alpha=0.25)
+    fig.tight_layout()
+    return fig
+
+
+def subgroup_metrics_table(min_rows: int):
+    subgroup = ARTIFACTS["subgroup_metrics"]
+    if subgroup.empty:
+        return pd.DataFrame({"message": ["Subgroup metrics are not available."]})
+    subset = subgroup[subgroup["rows"] >= int(min_rows)].copy()
+    subset = subset.sort_values(["rows"], ascending=False)
+    return subset.round(4)
+
+
+def run_sensitivity(
+    taxi_type: str,
+    pickup_zone: str,
+    dropoff_zone: str,
+    pickup_month: int,
+    pickup_weekday: int,
+    base_hour: int,
+    base_distance: float,
+    base_fare: float,
+    base_duration: float,
+    sweep_by: str,
+):
+    if sweep_by == "Pickup hour":
+        values = list(range(24))
+    elif sweep_by == "Fare amount":
+        values = [round(v, 2) for v in list(pd.Series([base_fare * x for x in [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]]))]
+    elif sweep_by == "Trip distance":
+        values = [round(v, 2) for v in list(pd.Series([base_distance * x for x in [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]]))]
+    else:
+        values = [round(v, 2) for v in list(pd.Series([base_duration * x for x in [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]]))]
+
+    rows = []
+    for value in values:
+        hour = int(value) if sweep_by == "Pickup hour" else int(base_hour)
+        distance = float(value) if sweep_by == "Trip distance" else float(base_distance)
+        fare = float(value) if sweep_by == "Fare amount" else float(base_fare)
+        duration = float(value) if sweep_by == "Trip duration" else float(base_duration)
+        feature_row = _build_feature_row(
+            taxi_type=taxi_type,
+            pickup_zone=pickup_zone,
+            dropoff_zone=dropoff_zone,
+            pickup_hour=hour,
+            pickup_weekday=pickup_weekday,
+            pickup_month=pickup_month,
+            trip_distance=distance,
+            fare_amount=fare,
+            trip_duration_minutes=duration,
+            vendor_id="1",
+            passenger_bucket="1",
+            ratecode="1",
+            store_and_fwd_flag="N",
+        )
+        prediction = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+        rows.append(
+            {
+                sweep_by: value,
+                "Tip Probability": prediction["tip_probability"],
+                "Conditional Tip": prediction["conditional_tip"],
+                "Expected Tip": prediction["expected_tip"],
+            }
+        )
+    table = pd.DataFrame(rows)
+    fig, ax1 = plt.subplots(figsize=(8.5, 4.8))
+    ax1.plot(table[sweep_by], table["Expected Tip"], marker="o", color="#176b54", label="Expected tip")
+    ax1.set_xlabel(sweep_by)
+    ax1.set_ylabel("Expected tip ($)")
+    ax1.grid(alpha=0.25)
+    ax2 = ax1.twinx()
+    ax2.plot(table[sweep_by], table["Tip Probability"], marker="s", color="#e09f3e", label="Tip probability")
+    ax2.set_ylabel("Tip probability")
+    ax1.set_title(f"What-if sensitivity: {sweep_by}")
+    fig.tight_layout()
+    return fig, table.round(4)
 
 
 def _build_feature_row(
@@ -329,6 +586,38 @@ def build_map_outputs(taxi_type: str, metric: str):
     return map_html, table
 
 
+def final_zone_rankings(taxi_type: str, borough: str, objective: str, top_k: int):
+    zone_risk = ARTIFACTS["zone_risk"]
+    if zone_risk.empty:
+        return pd.DataFrame({"message": ["Final zone risk summary is not available."]})
+    subset = zone_risk[
+        (zone_risk["taxi_type"] == taxi_type) & (zone_risk["pickup_borough"] == borough)
+    ].copy()
+    if subset.empty:
+        return pd.DataFrame({"message": ["No zones match the selected filters."]})
+    subset = subset.rename(columns={"pickup_zone": "dropoff_zone", "rows": "observed_trips"})
+    ranked = rank_destinations(subset, objective=objective, top_k=int(top_k))
+    return ranked[
+        [
+            "dropoff_zone",
+            "score",
+            "expected_tip",
+            "q10_tip",
+            "predicted_tip_probability",
+            "observed_trips",
+        ]
+    ].rename(
+        columns={
+            "dropoff_zone": "Zone",
+            "score": "Score",
+            "expected_tip": "Expected Tip",
+            "q10_tip": "Downside Q10 Tip",
+            "predicted_tip_probability": "Predicted Tip Probability",
+            "observed_trips": "Observed Trips",
+        }
+    )
+
+
 INITIAL_MONTHLY_PLOT = plot_monthly_trends("yellow")
 INITIAL_HOURLY_PLOT = plot_hourly_trends("yellow")
 INITIAL_ZONE_TABLE = top_zones_table("yellow")
@@ -339,23 +628,36 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
     gr.Markdown(
         """
         # Tip or Skip
-        A lightweight prototype for NYC taxi tipping prediction built from 2025 TLC yellow and green taxi trip records.
-
-        This Space demonstrates meaningful progress for an Applied Machine Learning project:
-        1. the dataset is identified and processed,
-        2. an initial two-stage ML pipeline is trained,
-        3. the background section of the technical write-up is started.
+        NYC taxi tipping prediction with uncertainty-aware machine learning on TLC Yellow and Green taxi records.
         """
     )
 
     with gr.Tab("Overview"):
         with gr.Row():
             gr.Markdown(metrics_markdown())
+            gr.Markdown(fact_cards_markdown(FACT_CONTEXT))
+        with gr.Row():
             gr.Markdown(ARTIFACTS["dataset_notes"])
         gr.Dataframe(
             value=ARTIFACTS["sample_rows"].head(20),
             label="Sampled cleaned rows used for the prototype",
             interactive=False,
+        )
+
+    with gr.Tab("Ask The Data"):
+        gr.Markdown("## Grounded Tipping Facts Assistant")
+        gr.ChatInterface(
+            fn=tipping_assistant,
+            examples=[
+                "What dataset did we use?",
+                "Which model performed best and why?",
+                "What are the highest expected-tip zones in Queens?",
+                "What does the Transformer-MDN add?",
+                "What are the main limitations of predicting tips from TLC data?",
+            ],
+            title=None,
+            description=None,
+            type="messages",
         )
 
     with gr.Tab("Predict"):
@@ -416,6 +718,33 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
             ],
             outputs=[prediction_text, prediction_table],
         )
+        gr.Markdown("## What-if Sensitivity")
+        with gr.Row():
+            sweep_by = gr.Dropdown(
+                ["Pickup hour", "Fare amount", "Trip distance", "Trip duration"],
+                value="Pickup hour",
+                label="Sweep variable",
+            )
+            sweep_button = gr.Button("Run sensitivity sweep", variant="primary")
+        with gr.Row():
+            sensitivity_plot = gr.Plot(label="Sensitivity curve")
+            sensitivity_table = gr.Dataframe(label="Sensitivity table", interactive=False)
+        sweep_button.click(
+            fn=run_sensitivity,
+            inputs=[
+                taxi_type,
+                pickup_zone,
+                dropoff_zone,
+                pickup_month,
+                pickup_weekday,
+                pickup_hour,
+                trip_distance,
+                fare_amount,
+                trip_duration_minutes,
+                sweep_by,
+            ],
+            outputs=[sensitivity_plot, sensitivity_table],
+        )
 
     with gr.Tab("Explore"):
         gr.Markdown("Explore precomputed summaries from the sampled 2025 prototype dataset.")
@@ -436,6 +765,54 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
         taxi_type_chart.change(plot_monthly_trends, inputs=taxi_type_chart, outputs=monthly_plot)
         taxi_type_chart.change(plot_hourly_trends, inputs=taxi_type_chart, outputs=hourly_plot)
         taxi_type_chart.change(top_zones_table, inputs=taxi_type_chart, outputs=zone_table)
+
+    with gr.Tab("Model Lab"):
+        gr.Markdown("## Final Model Comparison")
+        with gr.Row():
+            model_sort = gr.Dropdown(
+                ["Expected Tip MAE", "ROC-AUC", "Calibration Error", "Log Tip RMSE"],
+                value="Expected Tip MAE",
+                label="Sort by",
+            )
+            model_metric = gr.Dropdown(
+                ["Expected Tip MAE", "ROC-AUC", "Calibration Error", "Log Tip RMSE", "F1"],
+                value="Expected Tip MAE",
+                label="Metric chart",
+            )
+        with gr.Row():
+            model_table = gr.Dataframe(
+                value=model_comparison_table("Expected Tip MAE"),
+                label="Held-out 2025 model metrics",
+                interactive=False,
+            )
+            model_plot = gr.Plot(value=plot_final_metric("Expected Tip MAE"), label="Metric chart")
+        model_sort.change(model_comparison_table, inputs=model_sort, outputs=model_table)
+        model_metric.change(plot_final_metric, inputs=model_metric, outputs=model_plot)
+
+        gr.Markdown("## Frozen Dataset Time Profile")
+        with gr.Row():
+            final_month_taxi = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
+            final_month_metric = gr.Dropdown(["Tip Rate", "Average Tip"], value="Tip Rate", label="Metric")
+        final_month_plot = gr.Plot(value=final_monthly_plot("yellow", "Tip Rate"), label="Monthly profile")
+        final_month_taxi.change(
+            final_monthly_plot,
+            inputs=[final_month_taxi, final_month_metric],
+            outputs=final_month_plot,
+        )
+        final_month_metric.change(
+            final_monthly_plot,
+            inputs=[final_month_taxi, final_month_metric],
+            outputs=final_month_plot,
+        )
+
+        gr.Markdown("## Borough Subgroup Evaluation")
+        subgroup_min_rows = gr.Slider(500, 200000, value=500, step=500, label="Minimum test rows")
+        subgroup_table = gr.Dataframe(
+            value=subgroup_metrics_table(500),
+            label="Transformer-MDN subgroup metrics",
+            interactive=False,
+        )
+        subgroup_min_rows.change(subgroup_metrics_table, inputs=subgroup_min_rows, outputs=subgroup_table)
 
     with gr.Tab("Maps"):
         gr.Markdown(
@@ -468,9 +845,52 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
             outputs=[map_display, map_table],
         )
 
+    with gr.Tab("Final Results"):
+        gr.Markdown(final_results_markdown())
+        report_html = ARTIFACTS["report_dir"] / "index.html"
+        if report_html.exists():
+            gr.File(value=str(report_html), label="Offline technical blog index.html")
+            gr.HTML(value=report_html.read_text(encoding="utf-8"))
+        report_pdf = ARTIFACTS["report_dir"] / "Tip_or_Skip_Final_Report.pdf"
+        if report_pdf.exists():
+            gr.File(value=str(report_pdf), label="Final report PDF")
+        figure_paths = [
+            ARTIFACTS["report_dir"] / "figures" / "model_comparison.png",
+            ARTIFACTS["report_dir"] / "figures" / "monthly_tip_rate.png",
+            ARTIFACTS["report_dir"] / "figures" / "top_zone_expected_tip.png",
+        ]
+        for figure_path in figure_paths:
+            if figure_path.exists():
+                gr.Image(value=str(figure_path), show_label=False)
+
+    with gr.Tab("Shift Planner"):
+        gr.Markdown(
+            "Rank pickup zones using the final model's risk-neutral expected tip or downside-risk objective."
+        )
+        with gr.Row():
+            planner_taxi_type = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
+            planner_borough = gr.Dropdown(
+                ["Manhattan", "Queens", "Brooklyn", "Bronx", "Staten Island", "EWR", "Unknown"],
+                value="Manhattan",
+                label="Pickup borough",
+            )
+            planner_objective = gr.Dropdown(
+                ["risk_neutral", "risk_averse", "probability"],
+                value="risk_neutral",
+                label="Objective",
+            )
+            planner_top_k = gr.Slider(5, 20, value=10, step=1, label="Top K")
+        planner_button = gr.Button("Rank zones", variant="primary")
+        planner_table = gr.Dataframe(interactive=False, label="Recommended zones")
+        planner_button.click(
+            fn=final_zone_rankings,
+            inputs=[planner_taxi_type, planner_borough, planner_objective, planner_top_k],
+            outputs=planner_table,
+        )
+
     with gr.Tab("Blog Draft"):
         gr.Markdown(ARTIFACTS["blog_background"])
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=int(os.getenv("PORT", "7860")))

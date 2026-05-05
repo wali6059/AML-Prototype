@@ -1,0 +1,16 @@
+{
+  "rows": 1008000,
+  "columns": 46,
+  "tip_rate": 0.928936507936508,
+  "split_counts": {
+    "test": 504000,
+    "train": 378000,
+    "valid": 126000
+  },
+  "taxi_type_counts": {
+    "green": 288000,
+    "yellow": 720000
+  },
+  "package": "C:\\Users\\WALI AHMED\\OneDrive\\Desktop\\Semester 8\\Applied Machine Learning\\Prototype\\final_dataset\\tip_or_skip_final_dataset_package.zip",
+  "package_sha256": "072c3c539c035ef06beea317116dea04a836dbec2ad4187f015b31aee64ffad1"
+}

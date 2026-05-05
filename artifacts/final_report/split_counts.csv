@@ -1,0 +1,7 @@
+time_split,taxi_type,rows
+test,green,144000
+test,yellow,360000
+train,green,108000
+train,yellow,270000
+valid,green,36000
+valid,yellow,90000
