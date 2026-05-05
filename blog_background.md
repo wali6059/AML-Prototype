@@ -1,60 +1,48 @@
-# Background & Motivation
+# Background and Motivation
 
-Tipping is a complex, noisy real-world behavior shaped by geography, temporal dynamics, trip context, and underlying socioeconomic patterns. In the context of New York City's highly structured transportation ecosystem, tipping presents an ideal learning problem. The NYC TLC dataset provides immense volume and feature richness, yet whether a rider tips and by how much is highly varied across different boroughs and times of day.
+Tipping in taxis is noisy. It depends on the trip, the area, the time, and the rider. That makes it a good applied machine learning problem. The NYC TLC data is large and detailed, but the target is not simple.
 
-Understanding these tipping dynamics matters significantly for two reasons. Driver compensation relies heavily on tips sp accurately mapping regions and temporal windows with high expected tip values can optimize fleet distribution and improve driver livelihoods. This dataset serves as a rigorous benchmark for tabular machine learning, requiring the synthesis of high-cardinality spatial features, cyclical temporal features, and continuous monetary variables to predict an imperfectly distributed label.
+The main goal of this project is to model recorded electronic tips. This matters because tips are part of driver income. It also matters because the data has many common ML issues from class. The target has many zeros. The positive tips are skewed. The inputs mix numbers, categories, time, and location.
 
-# Prior Work & Methodology Alignment
+# Main Idea
 
-Previous transportation analytics studies using TLC records have predominantly focused on macroscopic trends like demand forecasting, travel time estimation, and broader spatial mobility patterns. When examining tipping specifically, prior behavioral economic studies generally treat it as an outcome influenced by service quality and payment friction. On the machine learning front, predicting such targets is often tackled using generalized linear models or tree-based ensembles.
+We do not model tip amount as one plain regression target. That would mix two different behaviors. First, a rider either leaves a recorded electronic tip or does not. Then, if there is a tip, the amount has to be modeled.
 
-However, attempting to model tipping as a single continuous target often fails because the underlying data generation process is dual-natured as the decision to tip at all is fundamentally different from the decision of how much to tip.
+So the project uses a two stage model.
 
-To address this, our project adopts a **Two-Stage Hurdle Model architecture**:
+1. Stage 1 predicts if the trip gets a recorded electronic tip.
+2. Stage 2 predicts the positive tip amount for trips that did get a tip.
 
-1. **Stage 1 (Classification):** A probabilistic model predicting the likelihood of a trip receiving any recorded electronic tip.
-2. **Stage 2 (Regression):** A conditional model estimating the exact tip amount, strictly trained on the subset of data where a tip occurred.
+This is the hurdle model idea from class. It fits the data better than treating all zero and positive values as one continuous target.
 
-This decoupled approach prevents the large influx of zero-tip rides from skewing the regression mechanics, aligning the technical pipeline more closely with the behavioral structure of the data.
+# Dataset
 
-# Current Prototype Scope
+The project uses NYC TLC Yellow and Green taxi records from 2024 and 2025. The trips are joined with the TLC taxi zone lookup table. This gives pickup and dropoff boroughs and zone names.
 
-This prototype serves as a functional proof of concept. It uses the 2025 NYC TLC yellow and green taxi trip records, joins them with geographic zone metadata, performs feature engineering, and deploys an initial two-stage ML pipeline using histogram-based gradient boosting baselines. This validates the end-to-end data pipeline, establishes evaluation metrics such as ROC-AUC and RMSE, and provides a functioning interactive deployment.
+The project only keeps credit card trips. This is important. The TLC `tip_amount` field records electronic tips. It does not include cash tips. So the target is recorded electronic tipping, not all tipping.
 
-# What Machine Learning Has Been Implemented
+The data is cleaned before training. Trips with invalid fare, distance, duration, or dates are removed. The split is based on time. Most of 2024 is used for training. Late 2024 is used for validation. All of 2025 is used for testing.
 
-The current prototype implements a real supervised learning baseline rather than a mock interface. We train separate model bundles for yellow taxis and green taxis, since the two services have different trip distributions and operating patterns. Each bundle contains two connected models.
+# Models
 
-The first model is a **HistGradientBoostingClassifier** from scikit-learn. It predicts the probability that a trip receives any recorded electronic tip. The second model is a **HistGradientBoostingRegressor** trained only on rides with a positive recorded tip. It predicts the tip amount conditional on tipping.
+The first baseline is a simple logistic and ridge hurdle model. It gives a clean starting point.
 
-The training features come from the raw TLC trip records after cleaning and feature engineering. They include:
+The second baseline is a boosted tree hurdle model. This is a strong tabular model. It works well with fare fields, distance, time, and zone features.
 
-- temporal features such as pickup hour, pickup weekday, and pickup month,
-- trip-level numeric features such as trip distance, fare amount, and trip duration,
-- operational variables such as vendor ID, passenger-count bucket, rate code, and store-and-forward flag,
-- spatial context from the taxi zone lookup, including pickup borough, pickup zone, dropoff borough, and dropoff zone.
+The deep model is a Tabular Transformer with a Mixture Density Network head. The transformer learns from categorical and numeric trip features. The MDN head predicts a distribution over positive tips instead of one number.
 
-Categorical variables are one-hot encoded and numeric variables are passed through directly. The data split is time-based: January through September for training, October for validation-style development, and November through December for testing.
+The tree model gives the best point predictions. The Transformer MDN is still useful because it gives uncertainty. That lets the demo show lower risk zones, intervals, and safer ride choices.
 
-# How The Prediction Works In The App
+# App and Demo
 
-When a user enters a hypothetical trip in the app, the interface constructs one feature row using the same schema as the training pipeline. That row is sent to the classifier first to estimate the probability of a recorded electronic tip. The same row is then sent to the regressor to estimate the conditional tip amount.
+The Hugging Face demo lets a user inspect the model. A user can enter a trip and get the tip probability, the expected positive tip, and the final expected tip.
 
-The app returns three outputs:
+The app also has a what if panel. It shows how predictions change when hour, fare, distance, or duration changes. There are maps and tables for borough and zone patterns.
 
-1. the probability of a recorded electronic tip,
-2. the predicted tip amount if a tip occurs,
-3. the expected tip value, computed as `tip probability x conditional tip amount`.
+The Driver Copilot is the language layer. A driver can ask about a pickup area or compare two ride options. The copilot looks up model results and gives a grounded answer. It does not just make up advice. It uses expected tip, tip probability, downside risk, and trip counts from the project artifacts.
 
-This two-stage structure matters because the decision to tip and the amount tipped are different behaviors. Modeling them separately gives a more realistic baseline than treating the entire problem as one continuous regression target.
+# Limitations
 
-# Pathway To The Proposed Architecture
+The biggest limitation is cash tips. They are not observed in the TLC tip field. A zero tip in this dataset means no electronic tip was recorded. It does not always mean the rider left no tip.
 
-While the current prototype captures basic non-linearities using tree-based baselines, the final proposal targets a more expressive deep learning approach for higher-order spatiotemporal interactions.
-
-- **Backbone Upgrade (Tabular Transformer):** Transition from tree-based models to a PyTorch-based tabular transformer to learn richer interactions across mixed feature types.
-- **Head Upgrade (Mixture Density Network):** Replace the second-stage point estimate with a probabilistic conditional tip distribution so the model can represent uncertainty and multimodal tipping behavior.
-
-# Data Limitations
-
-As noted in the TLC data dictionary, the `tip_amount` field is only automatically populated for credit-card transactions; cash tips are omitted. Consequently, the dataset is explicitly filtered to include only credit-card trips. The task here is predicting recorded electronic tipping behavior, not total real-world tipping behavior.
+The model is also not causal. It can show patterns in the data. It cannot prove that choosing one area will cause a higher tip. The demo should be read as a planning and exploration tool, not a guarantee of income.
