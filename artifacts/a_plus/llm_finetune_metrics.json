@@ -1,0 +1,12 @@
+{
+  "base_model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "device": "cuda",
+  "train_examples": 161,
+  "eval_examples": 29,
+  "epochs": 3,
+  "final_train_loss": 0.25663085772384026,
+  "final_eval_loss": 0.3033788738579586,
+  "eval_perplexity": 1.3544275244251478,
+  "zone_mention_rate": 1.0,
+  "output_dir": "/home/ubuntu/aml_project/Prototype/hf_space/artifacts/a_plus/driver_llm"
+}

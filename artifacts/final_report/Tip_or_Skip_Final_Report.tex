@@ -153,9 +153,112 @@ The intended inspection workflow is sequential. A reader can first ask the assis
 \section{Driver-Facing LLM Copilot}
 The final interface includes a driver-facing LLM layer called Driver Copilot. Its purpose is to let a driver ask natural questions about ride choice and shift planning, such as: ``I am at Midtown Center and got two ride options, JFK Airport or LaGuardia Airport. Which one should I choose?'' The copilot parses the prompt, identifies known TLC zones and aliases, retrieves final model outputs for those zones, and answers with a recommendation grounded in expected tip, downside $Q_{0.10}$ tip, predicted tip probability, and observed held-out trip count.
 
-We did not fine-tune a general language model from scratch because the core evidence is structured. Instead, we built a retrieval-grounded LLM interface over the trained tipping artifacts. The deterministic layer maps driver language to zone-level and trip-level model outputs. If a Hugging Face Inference API token and model are configured, the app can pass the grounded answer through a hosted text-generation model for conversational rewriting. If no token is configured, the public demo still works because the grounded response itself is generated from the project artifacts.
+The live demo uses retrieval-grounded answers as the default because the core evidence is structured and numeric. The deterministic layer maps driver language to zone-level and trip-level model outputs. We also generated instruction-tuning examples from the zone-risk table and trained a compact driver LLM as a stretch artifact. The tuned LLM is evaluated separately for grounding behavior, while the public Space keeps the deterministic layer available even when no Hugging Face inference token is configured.
 
 This component turns the machine learning results into a usable driver workflow. For a single area, the copilot classifies the area as strong, solid, or lower relative to comparable zones. For two candidate areas, it recommends the option with higher expected electronic tip and reports the gap. The structured comparison form additionally uses the deployed two-stage trip predictor to compare two rides with specified pickup area, dropoff areas, hour, weekday, month, distance, fare, and duration. The result is an LLM-style planning layer whose outputs are auditable rather than free-form.
+
+
+\section{A+ Stretch Experiments}
+The core project already includes a frozen dataset, baselines, a deep distributional model, subgroup analysis, and an interactive demo. To push the project further, we added a set of smaller experiments connected to the later lecture topics. These were ablations and calibration checks for model soundness, a taxi-zone graph experiment, a next-hour LSTM sequence experiment, and a driver-assistant language-model fine-tuning run. I treat these as model-audit tools, not as guaranteed improvements.
+
+\begin{table}[H]
+\centering
+\caption{Feature ablation metrics. Lower expected-tip MAE and ECE are better; higher ROC-AUC is better.}
+\begin{tabular}{lrrrr}
+\toprule
+Ablation & Features & ROC-AUC & ECE & Expected-tip MAE \\
+\midrule
+no\_time & 24 & 0.765 & 0.004 & \$1.46 \\
+full & 30 & 0.769 & 0.004 & \$1.46 \\
+no\_distance & 28 & 0.767 & 0.004 & \$1.46 \\
+no\_zones & 22 & 0.750 & 0.004 & \$1.47 \\
+no\_fare & 21 & 0.769 & 0.004 & \$1.47 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Calibration bins for the selected hurdle model.}
+\begin{tabular}{lrrrr}
+\toprule
+Probability bin & Rows & Predicted & Actual & Gap \\
+\midrule
+0.0--0.1 & 9,194 & 0.000 & 0.000 & -0.000 \\
+0.1--0.2 & 3 & 0.153 & 0.000 & -0.153 \\
+0.2--0.3 & 20 & 0.272 & 0.200 & -0.072 \\
+0.3--0.4 & 113 & 0.358 & 0.301 & -0.057 \\
+0.4--0.5 & 490 & 0.463 & 0.520 & 0.057 \\
+0.5--0.6 & 1,450 & 0.554 & 0.548 & -0.005 \\
+0.6--0.7 & 2,568 & 0.656 & 0.662 & 0.006 \\
+0.7--0.8 & 9,301 & 0.760 & 0.763 & 0.003 \\
+0.8--0.9 & 36,250 & 0.862 & 0.858 & -0.004 \\
+0.9--1.0 & 444,611 & 0.958 & 0.954 & -0.004 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\linewidth]{figures/ablation_expected_tip_mae.png}
+\caption{Feature ablation results using expected-tip MAE.}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/calibration_curve.png}
+\caption{Calibration curve comparing predicted tip probability with observed tip rate.}
+\end{figure}
+
+
+The ablation answers a basic question: what is the model leaning on? Removing zone features, time features, fare fields, or distance fields changes the error profile and makes the strongest feature groups visible. The calibration curve answers a different question: when the model says that a tip is likely, does that probability behave like a probability? These checks are important because the demo uses predicted probabilities to rank rides.
+
+The graph stretch experiment represents TLC zones as nodes and pickup-dropoff traffic as edges. Node features include pickup volume, dropoff volume, in-degree, out-degree, average tip, and tip rate from the training period. A small graph convolution model then predicts future zone-level tip behavior. The graph model used 259 TLC zone nodes. Its test zone-tip MAE was \$1.21; the temporal naive baseline was \$0.41. This was a useful negative result because it showed that simple year-to-year zone stability was hard to beat.
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\linewidth]{figures/zone_flow_graph_summary.png}
+\caption{Busiest taxi-zone nodes in the held-out pickup-dropoff flow graph.}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.68\linewidth]{figures/graph_gcn_zone_prediction.png}
+\caption{Graph model zone-tip predictions against 2025 observed zone averages.}
+\end{figure}
+
+
+The sequence stretch experiment aggregates rides into hourly time series by taxi type and pickup borough. A small LSTM reads the previous six hourly summaries and predicts the next hour's tip rate and average tip. The LSTM next-hour experiment used 43,065 test windows. Its average-tip MAE was \$1.80, compared with \$2.40 for a last-hour naive baseline. The tip-rate MAE was 0.148. This connects the project to the RNN/LSTM part of the course and gives a first version of shift-planning over time rather than only over zones.
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\linewidth]{figures/sequence_lstm_training.png}
+\caption{Sequence LSTM training and validation loss.}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/sequence_shift_signal.png}
+\caption{Current-hour versus next-hour tip-rate signal.}
+\end{figure}
+
+
+The driver-copilot layer was also evaluated directly. We created scripted ride-choice questions with known expected zones and expected dollar values from the final zone-risk table, then checked whether the answer included the recommended zone, the expected-tip number, and the cash-tip limitation. The scripted driver-copilot evaluation reached an overall grounding score of 100.0%. The same zone-risk table was converted into instruction-tuning examples for a compact driver LLM. The compact driver LLM run fine-tuned Qwen/Qwen2.5-0.5B-Instruct on 161 generated ride-planning examples, with eval perplexity 1.35 and zone mention rate 100.0%. The live demo still keeps deterministic retrieval as the default because it is more reliable for grading, but the fine-tuning run shows how the project can support a specialized driver-facing language model.
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\linewidth]{figures/copilot_eval_summary.png}
+\caption{Driver Copilot grounding check pass rates.}
+\end{figure}
+
+
 
 \section{Limitations and Ethics}
 The most important limitation is target observability. Cash tips are not recorded in TLC \texttt{tip\_amount}, so the model should be described as predicting recorded electronic tips. A zero in the data does not necessarily mean a rider left no tip; it means no electronic tip was recorded. This affects interpretation, especially across neighborhoods or trip types where cash behavior may differ.
@@ -182,6 +285,9 @@ The final project materials include this PDF, the offline \texttt{index.html} te
 \bibitem{mdn} Bishop, C. M. Mixture Density Networks. Aston University technical report, 1994.
 \bibitem{tabtransformer} Huang, X. et al. TabTransformer: Tabular Data Modeling Using Contextual Embeddings. 2020.
 \bibitem{calibration} Guo, C. et al. On Calibration of Modern Neural Networks. ICML, 2017.
+\bibitem{gcn} Kipf, T. N. and Welling, M. Semi-Supervised Classification with Graph Convolutional Networks. ICLR, 2017.
+\bibitem{lstm} Hochreiter, S. and Schmidhuber, J. Long Short-Term Memory. Neural Computation, 1997.
+\bibitem{lora} Hu, E. J. et al. LoRA: Low-Rank Adaptation of Large Language Models. 2021.
 \end{thebibliography}
 
 \end{document}

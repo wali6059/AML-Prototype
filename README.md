@@ -70,6 +70,7 @@ The merged app also includes a Manhattan zone map view built with `folium`, usin
 - A what-if sensitivity panel that sweeps pickup hour, fare, distance, or duration to show how predictions move.
 - An exploration tab with precomputed monthly, hourly, and zone-level summaries.
 - A model lab tab with final model comparisons, frozen-dataset monthly profiles, and borough subgroup metrics.
+- An A+ Lab tab with feature ablations, calibration bins, graph-flow metrics, sequence LSTM metrics, copilot checks, and driver-LLM fine-tune metrics.
 - A maps tab that visualizes Manhattan tipping patterns.
 - A final results tab with the self-contained offline `index.html`, final metrics, and available local report assets.
 - A shift planner tab that ranks zones by expected tip, lower-tail risk, or tip probability.
@@ -103,15 +104,28 @@ The final report generator writes both a paper-style PDF and an offline HTML blo
 python scripts/generate_latex_report.py
 ```
 
+The A+ stretch artifacts are generated with:
+
+```bash
+python scripts/run_extra_analysis.py --sample-train 180000 --sample-test 120000
+python scripts/train_sequence_model.py --epochs 45 --batch-size 1024
+python scripts/train_graph_model.py --epochs 500
+python scripts/train_driver_llm.py --model Qwen/Qwen2.5-0.5B-Instruct --epochs 3 --batch-size 1 --lr 1e-4 --max-length 384 --lora
+python scripts/generate_latex_report.py
+python scripts/package_submission.py
+```
+
 Important outputs:
 
 - `../report/Tip_or_Skip_Final_Report.pdf`
 - `../report/Tip_or_Skip_Final_Report.tex`
 - `../report/index.html`
 - `artifacts/final_report/`
+- `artifacts/a_plus/`
+- `../submission/tip_or_skip_courseworks_blog.zip`
 
 The CourseWorks guideline requires a local `index.html`; the generated `../report/index.html` is self-contained and embeds the report figures directly.
-The live Space tracks the text/HTML report artifacts and generates interactive plots in the app. Keep the PDF as a local submission artifact unless binary storage is configured for the Hugging Face Space.
+The CourseWorks zip contains the blog `index.html`, figures, PDF report, and a README with the GitHub and Hugging Face links.
 
 ## Deploying to Hugging Face
 

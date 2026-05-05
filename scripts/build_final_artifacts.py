@@ -24,6 +24,12 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=4096)
     parser.add_argument("--train-sample", type=int, default=None)
     parser.add_argument("--test-sample", type=int, default=None)
+    parser.add_argument("--skip-extra", action="store_true")
+    parser.add_argument("--extra-train-sample", type=int, default=180000)
+    parser.add_argument("--extra-test-sample", type=int, default=120000)
+    parser.add_argument("--sequence-epochs", type=int, default=45)
+    parser.add_argument("--graph-epochs", type=int, default=500)
+    parser.add_argument("--train-driver-llm", action="store_true")
     args = parser.parse_args()
 
     ensure_directories()
@@ -42,6 +48,21 @@ def main() -> None:
         deep_cmd += ["--test-sample", str(args.test_sample)]
     run(deep_cmd)
     run([sys.executable, "scripts/evaluate_models.py"])
+    if not args.skip_extra:
+        run(
+            [
+                sys.executable,
+                "scripts/run_extra_analysis.py",
+                "--sample-train",
+                str(args.extra_train_sample),
+                "--sample-test",
+                str(args.extra_test_sample),
+            ]
+        )
+        run([sys.executable, "scripts/train_sequence_model.py", "--epochs", str(args.sequence_epochs)])
+        run([sys.executable, "scripts/train_graph_model.py", "--epochs", str(args.graph_epochs)])
+        if args.train_driver_llm:
+            run([sys.executable, "scripts/train_driver_llm.py"])
     run([sys.executable, "scripts/generate_latex_report.py"])
 
     package = SUBMISSION_DIR / "tip_or_skip_completion_outputs.zip"
@@ -65,4 +86,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

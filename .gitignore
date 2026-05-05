@@ -3,6 +3,7 @@
 __pycache__/
 *.py[cod]
 .env
+.venv/
 artifacts/final/
 artifacts/final_report/*.pdf
 artifacts/final_report/figures/*.png

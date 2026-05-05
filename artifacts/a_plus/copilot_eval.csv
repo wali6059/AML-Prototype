@@ -1,0 +1,40 @@
+question,answer,has_zone,has_number,has_caveat,score
+I am choosing between JFK Airport and LaGuardia Airport. Which area is better for tips?,"I recommend **JFK Airport** for the better expected electronic tip signal.
+
+Comparison from the final model's zone-risk table:
+- **JFK Airport** (yellow, Queens): expected tip $6.15, downside Q10 $6.38, tip probability 51.1%, observed trips 16,481
+- **LaGuardia Airport** (yellow, Queens): expected tip $5.84, downside Q10 $5.66, tip probability 59.3%, observed trips 12,815
+
+The expected-tip gap between JFK Airport and LaGuardia Airport is $0.31. Use the Q10 number as the downside-risk check: higher Q10 means the lower-tail outcome is better.
+
+This is decision support, not a guarantee. It predicts recorded electronic tips only; cash tips are not observed in TLC data.",1,1,1,1.0
+I am choosing between Midtown Center and Battery Park City. Which area is better for tips?,"I recommend **Battery Park City** for the better expected electronic tip signal.
+
+Comparison from the final model's zone-risk table:
+- **Battery Park City** (yellow, Manhattan): expected tip $2.81, downside Q10 $2.55, tip probability 62.0%, observed trips 2,219
+- **Battery Park** (yellow, Manhattan): expected tip $2.54, downside Q10 $2.38, tip probability 57.4%, observed trips 125
+- **Midtown Center** (yellow, Manhattan): expected tip $2.21, downside Q10 $2.05, tip probability 61.3%, observed trips 18,123
+
+The expected-tip gap between Battery Park City and Battery Park is $0.27. Use the Q10 number as the downside-risk check: higher Q10 means the lower-tail outcome is better.
+
+This is decision support, not a guarantee. It predicts recorded electronic tips only; cash tips are not observed in TLC data.",1,1,1,1.0
+I am choosing between Times Sq/Theatre District and Upper East Side North. Which area is better for tips?,"I recommend **Times Sq/Theatre District** for the better expected electronic tip signal.
+
+Comparison from the final model's zone-risk table:
+- **Times Sq/Theatre District** (yellow, Manhattan): expected tip $2.37, downside Q10 $2.31, tip probability 59.9%, observed trips 11,841
+- **Upper East Side North** (green, Manhattan): expected tip $1.99, downside Q10 $1.82, tip probability 60.4%, observed trips 1,321
+- **Upper East Side North** (yellow, Manhattan): expected tip $1.99, downside Q10 $1.81, tip probability 63.4%, observed trips 16,327
+
+The expected-tip gap between Times Sq/Theatre District and Upper East Side North is $0.38. Use the Q10 number as the downside-risk check: higher Q10 means the lower-tail outcome is better.
+
+This is decision support, not a guarantee. It predicts recorded electronic tips only; cash tips are not observed in TLC data.",1,1,1,1.0
+I am choosing between Financial District North and Red Hook. Which area is better for tips?,"I recommend **Red Hook** for the better expected electronic tip signal.
+
+Comparison from the final model's zone-risk table:
+- **Red Hook** (green, Brooklyn): expected tip $3.49, downside Q10 $4.37, tip probability 39.7%, observed trips 606
+- **Red Hook** (yellow, Brooklyn): expected tip $2.68, downside Q10 $3.48, tip probability 32.6%, observed trips 52
+- **Financial District North** (yellow, Manhattan): expected tip $2.68, downside Q10 $2.41, tip probability 60.5%, observed trips 2,018
+
+The expected-tip gap between Red Hook and Red Hook is $0.81. Use the Q10 number as the downside-risk check: higher Q10 means the lower-tail outcome is better.
+
+This is decision support, not a guarantee. It predicts recorded electronic tips only; cash tips are not observed in TLC data.",1,1,1,1.0
