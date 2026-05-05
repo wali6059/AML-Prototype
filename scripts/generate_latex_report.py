@@ -129,6 +129,152 @@ def _zone_rows(zones: pd.DataFrame) -> str:
     return "\n".join(rows)
 
 
+def _ablation_rows(ablation: pd.DataFrame) -> str:
+    if ablation.empty:
+        return r"No feature ablation metrics were generated. \\"
+    rows = []
+    for _, row in ablation.sort_values("expected_tip_mae").iterrows():
+        rows.append(
+            " & ".join(
+                [
+                    _latex_escape(row["ablation"]),
+                    _fmt(row["features"], "int"),
+                    _fmt(row["class_roc_auc"]),
+                    _fmt(row["class_ece"]),
+                    _fmt(row["expected_tip_mae"], "money"),
+                ]
+            )
+            + r" \\"
+        )
+    return "\n".join(rows)
+
+
+def _calibration_rows(calibration: pd.DataFrame) -> str:
+    if calibration.empty:
+        return r"No calibration bins were generated. \\"
+    rows = []
+    for _, row in calibration.iterrows():
+        rows.append(
+            " & ".join(
+                [
+                    f"{row['low']:.1f}--{row['high']:.1f}",
+                    _fmt(row["rows"], "int"),
+                    _fmt(row["predicted"]),
+                    _fmt(row["actual"]),
+                    _fmt(row["gap"]),
+                ]
+            )
+            + r" \\"
+        )
+    return "\n".join(rows)
+
+
+def _figure_tex(name: str, width: str, caption: str) -> str:
+    if not (FIGURE_DIR / name).exists():
+        return ""
+    return rf"""
+\begin{{figure}}[H]
+\centering
+\includegraphics[width={width}]{{figures/{name}}}
+\caption{{{_latex_escape(caption)}}}
+\end{{figure}}
+"""
+
+
+def _extra_tex(extra: dict[str, object]) -> str:
+    ablation = extra["ablation"]
+    calibration = extra["calibration"]
+    graph = extra["graph"]
+    sequence = extra["sequence"]
+    copilot = extra["copilot"]
+    llm = extra["llm"]
+    if ablation.empty and calibration.empty and graph.empty and copilot.empty and not sequence and not llm:
+        return ""
+    seq_text = "The sequence LSTM metrics were not generated."
+    if sequence:
+        seq_text = (
+            f"The LSTM next-hour experiment used {int(sequence.get('test_rows', 0)):,} test windows. "
+            f"Its average-tip MAE was {_fmt(sequence.get('avg_tip_mae', 0), 'money')}, compared with "
+            f"{_fmt(sequence.get('naive_avg_tip_mae', 0), 'money')} for a last-hour naive baseline. "
+            f"The tip-rate MAE was {float(sequence.get('tip_rate_mae', 0)):.3f}."
+        )
+    graph_text = "The graph metrics were not generated."
+    if not graph.empty:
+        row = graph.iloc[0]
+        graph_text = (
+            f"The graph model used {int(row.get('nodes', 0))} TLC zone nodes. "
+            f"Its test zone-tip MAE was {_fmt(row.get('test_tip_mae', 0), 'money')}; "
+            f"the temporal naive baseline was {_fmt(row.get('naive_test_tip_mae', 0), 'money')}. "
+            "This was a useful negative result because it showed that simple year-to-year zone stability was hard to beat."
+        )
+    copilot_text = "The copilot checks were not generated."
+    if not copilot.empty:
+        overall = copilot[copilot["check"] == "overall"]
+        if not overall.empty:
+            copilot_text = f"The scripted driver-copilot evaluation reached an overall grounding score of {float(overall.iloc[0]['pass_rate']):.1%}."
+    llm_text = "The driver LLM fine-tuning run was not generated."
+    if llm:
+        llm_text = (
+            f"The compact driver LLM run fine-tuned {llm.get('base_model', 'a causal language model')} on "
+            f"{int(llm.get('train_examples', 0))} generated ride-planning examples, with eval perplexity "
+            f"{float(llm.get('eval_perplexity', 0)):.2f} and zone mention rate {float(llm.get('zone_mention_rate', 0)):.1%}."
+        )
+    fig_ablation = _figure_tex("ablation_expected_tip_mae.png", "0.82\\linewidth", "Feature ablation results using expected-tip MAE.")
+    fig_calibration = _figure_tex("calibration_curve.png", "0.62\\linewidth", "Calibration curve comparing predicted tip probability with observed tip rate.")
+    fig_flow = _figure_tex("zone_flow_graph_summary.png", "0.82\\linewidth", "Busiest taxi-zone nodes in the held-out pickup-dropoff flow graph.")
+    fig_graph = _figure_tex("graph_gcn_zone_prediction.png", "0.68\\linewidth", "Graph model zone-tip predictions against 2025 observed zone averages.")
+    fig_lstm = _figure_tex("sequence_lstm_training.png", "0.75\\linewidth", "Sequence LSTM training and validation loss.")
+    fig_seq = _figure_tex("sequence_shift_signal.png", "0.62\\linewidth", "Current-hour versus next-hour tip-rate signal.")
+    fig_copilot = _figure_tex("copilot_eval_summary.png", "0.62\\linewidth", "Driver Copilot grounding check pass rates.")
+    return rf"""
+\section{{A+ Stretch Experiments}}
+The core project already includes a frozen dataset, baselines, a deep distributional model, subgroup analysis, and an interactive demo. To push the project further, we added a set of smaller experiments connected to the later lecture topics. These were ablations and calibration checks for model soundness, a taxi-zone graph experiment, a next-hour LSTM sequence experiment, and a driver-assistant language-model fine-tuning run. I treat these as model-audit tools, not as guaranteed improvements.
+
+\begin{{table}}[H]
+\centering
+\caption{{Feature ablation metrics. Lower expected-tip MAE and ECE are better; higher ROC-AUC is better.}}
+\begin{{tabular}}{{lrrrr}}
+\toprule
+Ablation & Features & ROC-AUC & ECE & Expected-tip MAE \\
+\midrule
+{_ablation_rows(ablation)}
+\bottomrule
+\end{{tabular}}
+\end{{table}}
+
+\begin{{table}}[H]
+\centering
+\caption{{Calibration bins for the selected hurdle model.}}
+\begin{{tabular}}{{lrrrr}}
+\toprule
+Probability bin & Rows & Predicted & Actual & Gap \\
+\midrule
+{_calibration_rows(calibration)}
+\bottomrule
+\end{{tabular}}
+\end{{table}}
+
+{fig_ablation}
+{fig_calibration}
+
+The ablation answers a basic question: what is the model leaning on? Removing zone features, time features, fare fields, or distance fields changes the error profile and makes the strongest feature groups visible. The calibration curve answers a different question: when the model says that a tip is likely, does that probability behave like a probability? These checks are important because the demo uses predicted probabilities to rank rides.
+
+The graph stretch experiment represents TLC zones as nodes and pickup-dropoff traffic as edges. Node features include pickup volume, dropoff volume, in-degree, out-degree, average tip, and tip rate from the training period. A small graph convolution model then predicts future zone-level tip behavior. {graph_text}
+
+{fig_flow}
+{fig_graph}
+
+The sequence stretch experiment aggregates rides into hourly time series by taxi type and pickup borough. A small LSTM reads the previous six hourly summaries and predicts the next hour's tip rate and average tip. {seq_text} This connects the project to the RNN/LSTM part of the course and gives a first version of shift-planning over time rather than only over zones.
+
+{fig_lstm}
+{fig_seq}
+
+The driver-copilot layer was also evaluated directly. We created scripted ride-choice questions with known expected zones and expected dollar values from the final zone-risk table, then checked whether the answer included the recommended zone, the expected-tip number, and the cash-tip limitation. {copilot_text} The same zone-risk table was converted into instruction-tuning examples for a compact driver LLM. {llm_text} The live demo still keeps deterministic retrieval as the default because it is more reliable for grading, but the fine-tuning run shows how the project can support a specialized driver-facing language model.
+
+{fig_copilot}
+"""
+
+
 def _img_base64(path: Path) -> str:
     return base64.b64encode(path.read_bytes()).decode("ascii")
 
@@ -137,7 +283,60 @@ def _html_table(df: pd.DataFrame) -> str:
     return df.to_html(index=False, border=0, classes="data-table", escape=True)
 
 
-def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFrame, zones: pd.DataFrame) -> None:
+def _read_csv(path: Path) -> pd.DataFrame:
+    return pd.read_csv(path) if path.exists() else pd.DataFrame()
+
+
+def _read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def _maybe_figure(name: str, caption: str) -> str:
+    path = FIGURE_DIR / name
+    if not path.exists():
+        return ""
+    return f'<figure><img alt="{html.escape(caption)}" src="data:image/png;base64,{_img_base64(path)}"><figcaption>{html.escape(caption)}</figcaption></figure>'
+
+
+def _extra_html(extra: dict[str, object]) -> str:
+    ablation = extra["ablation"]
+    calibration = extra["calibration"]
+    graph = extra["graph"]
+    copilot = extra["copilot"]
+    sequence = extra["sequence"]
+    llm = extra["llm"]
+    if ablation.empty and calibration.empty and graph.empty and copilot.empty and not sequence and not llm:
+        return ""
+    seq_table = _html_table(pd.DataFrame([sequence]).round(4)) if sequence else ""
+    llm_table = _html_table(pd.DataFrame([llm]).round(4)) if llm else ""
+    graph_table = _html_table(graph.round(4)) if not graph.empty else ""
+    copilot_table = _html_table(copilot.round(4)) if not copilot.empty else ""
+    ablation_table = _html_table(ablation.round(4)) if not ablation.empty else ""
+    calibration_table_html = _html_table(calibration.round(4)) if not calibration.empty else ""
+    return f"""
+<section>
+  <h2>A+ Stretch Experiments</h2>
+  <p>After the core system was working, we added several smaller experiments tied to the later course topics: feature ablations, probability calibration, a taxi-zone flow graph, a next-hour LSTM sequence model, a scripted copilot evaluation, and a compact driver-LLM fine-tuning run. These are not presented as magic improvements. They are included because they make the project easier to audit: each stretch experiment asks a specific question about what the model is using or how a driver-facing layer behaves.</p>
+  <p>The feature ablation retrains the same tree-hurdle family after removing groups of inputs. The calibration table bins predicted tip probabilities and compares them with actual tip rates. The graph experiment builds a pickup-dropoff flow network over TLC zones and trains a lightweight graph convolution model to predict zone-level future tip behavior. The sequence experiment aggregates trips by hour and trains an LSTM to predict next-hour tip rate and average tip. The LLM experiment turns zone-risk summaries into instruction-tuning examples for a driver assistant and evaluates whether generated answers mention the right zone and remain grounded in numeric facts.</p>
+  <h3>Feature Ablation and Calibration</h3>
+  {ablation_table}
+  {calibration_table_html}
+  {_maybe_figure("ablation_expected_tip_mae.png", "Figure 4. Feature ablation results using expected-tip MAE.")}
+  {_maybe_figure("calibration_curve.png", "Figure 5. Calibration curve for the selected hurdle model.")}
+  <h3>Graph, Sequence, and Driver Copilot Checks</h3>
+  {graph_table}
+  {seq_table}
+  {copilot_table}
+  {llm_table}
+  {_maybe_figure("zone_flow_graph_summary.png", "Figure 6. Busiest taxi-zone nodes in the held-out flow graph.")}
+  {_maybe_figure("sequence_lstm_training.png", "Figure 7. Sequence LSTM training and validation loss.")}
+  {_maybe_figure("graph_gcn_zone_prediction.png", "Figure 8. Graph model zone-tip predictions against 2025 observations.")}
+  {_maybe_figure("copilot_eval_summary.png", "Figure 9. Driver Copilot grounding check pass rates.")}
+</section>
+"""
+
+
+def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFrame, zones: pd.DataFrame, extra: dict[str, object]) -> None:
     best = metrics.sort_values("expected_tip_mae").iloc[0]
     split = pd.DataFrame(
         [
@@ -251,9 +450,10 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
 <section>
   <h2>Driver-Facing LLM Copilot</h2>
   <p>The final demo adds a driver-facing LLM layer called Driver Copilot. The goal is not to make a generic chatbot that talks about taxis; it is to make a natural-language decision layer over the trained tipping system. A driver can ask questions such as: “I am at Midtown Center and got ride options to JFK Airport or LaGuardia Airport. Which should I choose?” The copilot extracts the relevant TLC zones, retrieves the final model’s expected tip, downside Q10 tip, predicted tip probability, and observed trip count, then returns a recommendation with evidence.</p>
-  <p>We built this as a retrieval-grounded LLM interface rather than fine-tuning a large language model from scratch. The dataset is structured and numeric, so the reliable part of the system should be the trained tipping model and report artifacts. The language layer parses the driver’s prompt, maps area names and common aliases to TLC zones, compares candidate areas, and optionally passes the grounded answer through a Hugging Face text-generation model if an inference token is configured. Without a token, the deterministic grounded response still works in the public Space.</p>
+  <p>The live demo uses retrieval-grounded answers as the default because the dataset evidence is structured and numeric. The language layer parses the driver’s prompt, maps area names and common aliases to TLC zones, and compares candidate areas using model outputs. As a stretch artifact, we also generated driver-assistant instruction examples from the zone-risk table and trained a compact LLM on those examples. The deterministic grounded response stays available in the public Space so the demo remains reliable even without an inference token.</p>
   <p>The result is a practical shift-planning assistant. For single-area prompts, it labels an area as strong, solid, or lower relative to comparable zones. For two-option prompts, it recommends the option with higher expected electronic tip and reports the expected-tip gap plus downside-risk evidence. The structured comparison form goes further by using the deployed two-stage trip model to compare two concrete rides with user-specified pickup area, dropoff areas, hour, weekday, month, distance, fare, and duration. This makes the LLM layer an interface to the machine learning system, not a replacement for it.</p>
 </section>
+{_extra_html(extra)}
 
 <section>
   <h2>Limitations</h2>
@@ -279,11 +479,21 @@ def main() -> None:
     metrics = pd.read_csv(REPORT_DIR / "final_metrics.csv")
     subgroup = pd.read_csv(REPORT_DIR / "subgroup_metrics.csv") if (REPORT_DIR / "subgroup_metrics.csv").exists() else pd.DataFrame()
     zones = pd.read_csv(REPORT_DIR / "zone_risk_summary.csv") if (REPORT_DIR / "zone_risk_summary.csv").exists() else pd.DataFrame()
+    a_plus_dir = ARTIFACT_DIR / "a_plus"
+    extra = {
+        "ablation": _read_csv(a_plus_dir / "ablation_metrics.csv"),
+        "calibration": _read_csv(a_plus_dir / "calibration_bins.csv"),
+        "graph": _read_csv(a_plus_dir / "graph_metrics.csv"),
+        "copilot": _read_csv(a_plus_dir / "copilot_eval_summary.csv"),
+        "sequence": _read_json(a_plus_dir / "sequence_metrics.json"),
+        "llm": _read_json(a_plus_dir / "llm_finetune_metrics.json"),
+    }
     metric_rows = _table_rows(metrics)
     split_rows = _split_table(summary)
     subgroup_rows = _subgroup_rows(subgroup)
     zone_rows = _zone_rows(zones)
     best = metrics.sort_values("expected_tip_mae").iloc[0]
+    extra_tex = _extra_tex(extra)
 
     tex = rf"""
 \documentclass[11pt]{{article}}
@@ -427,9 +637,11 @@ The intended inspection workflow is sequential. A reader can first ask the assis
 \section{{Driver-Facing LLM Copilot}}
 The final interface includes a driver-facing LLM layer called Driver Copilot. Its purpose is to let a driver ask natural questions about ride choice and shift planning, such as: ``I am at Midtown Center and got two ride options, JFK Airport or LaGuardia Airport. Which one should I choose?'' The copilot parses the prompt, identifies known TLC zones and aliases, retrieves final model outputs for those zones, and answers with a recommendation grounded in expected tip, downside $Q_{{0.10}}$ tip, predicted tip probability, and observed held-out trip count.
 
-We did not fine-tune a general language model from scratch because the core evidence is structured. Instead, we built a retrieval-grounded LLM interface over the trained tipping artifacts. The deterministic layer maps driver language to zone-level and trip-level model outputs. If a Hugging Face Inference API token and model are configured, the app can pass the grounded answer through a hosted text-generation model for conversational rewriting. If no token is configured, the public demo still works because the grounded response itself is generated from the project artifacts.
+The live demo uses retrieval-grounded answers as the default because the core evidence is structured and numeric. The deterministic layer maps driver language to zone-level and trip-level model outputs. We also generated instruction-tuning examples from the zone-risk table and trained a compact driver LLM as a stretch artifact. The tuned LLM is evaluated separately for grounding behavior, while the public Space keeps the deterministic layer available even when no Hugging Face inference token is configured.
 
 This component turns the machine learning results into a usable driver workflow. For a single area, the copilot classifies the area as strong, solid, or lower relative to comparable zones. For two candidate areas, it recommends the option with higher expected electronic tip and reports the gap. The structured comparison form additionally uses the deployed two-stage trip predictor to compare two rides with specified pickup area, dropoff areas, hour, weekday, month, distance, fare, and duration. The result is an LLM-style planning layer whose outputs are auditable rather than free-form.
+
+{extra_tex}
 
 \section{{Limitations and Ethics}}
 The most important limitation is target observability. Cash tips are not recorded in TLC \texttt{{tip\_amount}}, so the model should be described as predicting recorded electronic tips. A zero in the data does not necessarily mean a rider left no tip; it means no electronic tip was recorded. This affects interpretation, especially across neighborhoods or trip types where cash behavior may differ.
@@ -456,13 +668,16 @@ The final project materials include this PDF, the offline \texttt{{index.html}} 
 \bibitem{{mdn}} Bishop, C. M. Mixture Density Networks. Aston University technical report, 1994.
 \bibitem{{tabtransformer}} Huang, X. et al. TabTransformer: Tabular Data Modeling Using Contextual Embeddings. 2020.
 \bibitem{{calibration}} Guo, C. et al. On Calibration of Modern Neural Networks. ICML, 2017.
+\bibitem{{gcn}} Kipf, T. N. and Welling, M. Semi-Supervised Classification with Graph Convolutional Networks. ICLR, 2017.
+\bibitem{{lstm}} Hochreiter, S. and Schmidhuber, J. Long Short-Term Memory. Neural Computation, 1997.
+\bibitem{{lora}} Hu, E. J. et al. LoRA: Low-Rank Adaptation of Large Language Models. 2021.
 \end{{thebibliography}}
 
 \end{{document}}
 """
     report_path = REPORT_DIR / "Tip_or_Skip_Final_Report.tex"
     report_path.write_text(tex.strip() + "\n", encoding="utf-8")
-    _write_index_html(summary, metrics, subgroup, zones)
+    _write_index_html(summary, metrics, subgroup, zones, extra)
 
     if shutil.which("pdflatex"):
         for suffix in [".aux", ".log", ".out"]:

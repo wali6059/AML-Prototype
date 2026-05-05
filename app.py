@@ -40,6 +40,14 @@ def load_blog_background() -> str:
     return (ARTIFACT_DIR / "blog_background.md").read_text(encoding="utf-8")
 
 
+def _read_csv(path: Path) -> pd.DataFrame:
+    return pd.read_csv(path) if path.exists() else pd.DataFrame()
+
+
+def _read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
 def _load_zone_centroids() -> dict[str, tuple[float, float]]:
     global _ZONE_CENTROIDS_CACHE
     if _ZONE_CENTROIDS_CACHE is not None:
@@ -107,10 +115,11 @@ def load_artifacts() -> dict:
     zone_risk_path = report_dir / "zone_risk_summary.csv"
     subgroup_path = report_dir / "subgroup_metrics.csv"
     monthly_profile_path = report_dir / "monthly_profile_for_report.csv"
-    final_metrics = pd.read_csv(final_metrics_path) if final_metrics_path.exists() else pd.DataFrame()
-    zone_risk = pd.read_csv(zone_risk_path) if zone_risk_path.exists() else pd.DataFrame()
-    subgroup_metrics = pd.read_csv(subgroup_path) if subgroup_path.exists() else pd.DataFrame()
-    monthly_profile = pd.read_csv(monthly_profile_path) if monthly_profile_path.exists() else pd.DataFrame()
+    a_plus_dir = ARTIFACT_DIR / "a_plus"
+    final_metrics = _read_csv(final_metrics_path)
+    zone_risk = _read_csv(zone_risk_path)
+    subgroup_metrics = _read_csv(subgroup_path)
+    monthly_profile = _read_csv(monthly_profile_path)
     return {
         "metrics": metrics,
         "final_summary": final_summary,
@@ -128,6 +137,15 @@ def load_artifacts() -> dict:
         "zone_risk": zone_risk,
         "subgroup_metrics": subgroup_metrics,
         "monthly_profile": monthly_profile,
+        "a_plus_dir": a_plus_dir,
+        "ablation_metrics": _read_csv(a_plus_dir / "ablation_metrics.csv"),
+        "calibration_bins": _read_csv(a_plus_dir / "calibration_bins.csv"),
+        "zone_flow_features": _read_csv(a_plus_dir / "zone_flow_features.csv"),
+        "sequence_metrics": _read_json(a_plus_dir / "sequence_metrics.json"),
+        "graph_metrics": _read_csv(a_plus_dir / "graph_metrics.csv"),
+        "copilot_eval_summary": _read_csv(a_plus_dir / "copilot_eval_summary.csv"),
+        "copilot_eval": _read_csv(a_plus_dir / "copilot_eval.csv"),
+        "llm_finetune_metrics": _read_json(a_plus_dir / "llm_finetune_metrics.json"),
     }
 
 
@@ -387,6 +405,48 @@ def subgroup_metrics_table(min_rows: int):
     subset = subgroup[subgroup["rows"] >= int(min_rows)].copy()
     subset = subset.sort_values(["rows"], ascending=False)
     return subset.round(4)
+
+
+def a_plus_markdown() -> str:
+    blocks = ["## A+ Stretch Experiment Artifacts", ""]
+    ablation = ARTIFACTS["ablation_metrics"]
+    if not ablation.empty:
+        best = ablation.sort_values("expected_tip_mae").iloc[0]
+        blocks.append(f"Best ablation run: **{best['ablation']}** with expected-tip MAE **${best['expected_tip_mae']:.2f}**.")
+    sequence = ARTIFACTS["sequence_metrics"]
+    if sequence:
+        blocks.append(
+            f"Sequence LSTM: next-hour average-tip MAE **${sequence.get('avg_tip_mae', 0):.2f}** "
+            f"over **{int(sequence.get('test_rows', 0)):,}** test windows."
+        )
+    graph = ARTIFACTS["graph_metrics"]
+    if not graph.empty:
+        row = graph.iloc[0]
+        blocks.append(
+            f"Graph model: test zone-tip MAE **${row.get('test_tip_mae', 0):.2f}**, "
+            f"naive temporal baseline **${row.get('naive_test_tip_mae', 0):.2f}**."
+        )
+    copilot = ARTIFACTS["copilot_eval_summary"]
+    if not copilot.empty:
+        overall = copilot[copilot["check"] == "overall"]
+        if not overall.empty:
+            blocks.append(f"Driver Copilot grounding score: **{float(overall.iloc[0]['pass_rate']):.0%}** on the scripted ride-choice checks.")
+    llm = ARTIFACTS["llm_finetune_metrics"]
+    if llm:
+        blocks.append(
+            f"Fine-tuned driver LLM artifact: **{llm.get('base_model', 'model')}**, "
+            f"eval perplexity **{llm.get('eval_perplexity', 0):.2f}**, zone mention rate **{llm.get('zone_mention_rate', 0):.0%}**."
+        )
+    if len(blocks) == 2:
+        blocks.append("Run `python scripts/run_extra_analysis.py`, `python scripts/train_sequence_model.py`, and `python scripts/train_graph_model.py` to generate these artifacts.")
+    return "\n\n".join(blocks)
+
+
+def metric_json_table(name: str) -> pd.DataFrame:
+    data = ARTIFACTS[name]
+    if not data:
+        return pd.DataFrame({"message": ["Metric file is not available."]})
+    return pd.DataFrame([data]).round(4)
 
 
 def run_sensitivity(
@@ -960,6 +1020,62 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
             interactive=False,
         )
         subgroup_min_rows.change(subgroup_metrics_table, inputs=subgroup_min_rows, outputs=subgroup_table)
+
+    with gr.Tab("A+ Lab"):
+        gr.Markdown(a_plus_markdown())
+        with gr.Row():
+            gr.Dataframe(
+                value=ARTIFACTS["ablation_metrics"].round(4) if not ARTIFACTS["ablation_metrics"].empty else pd.DataFrame({"message": ["Ablation metrics not generated."]}),
+                label="Feature ablations",
+                interactive=False,
+            )
+            gr.Dataframe(
+                value=ARTIFACTS["calibration_bins"].round(4) if not ARTIFACTS["calibration_bins"].empty else pd.DataFrame({"message": ["Calibration bins not generated."]}),
+                label="Calibration bins",
+                interactive=False,
+            )
+        with gr.Row():
+            gr.Dataframe(
+                value=metric_json_table("sequence_metrics"),
+                label="Sequence LSTM metrics",
+                interactive=False,
+            )
+            gr.Dataframe(
+                value=ARTIFACTS["graph_metrics"].round(4) if not ARTIFACTS["graph_metrics"].empty else pd.DataFrame({"message": ["Graph metrics not generated."]}),
+                label="Graph flow model metrics",
+                interactive=False,
+            )
+        with gr.Row():
+            gr.Dataframe(
+                value=ARTIFACTS["copilot_eval_summary"].round(4) if not ARTIFACTS["copilot_eval_summary"].empty else pd.DataFrame({"message": ["Copilot evaluation not generated."]}),
+                label="Driver Copilot grounding checks",
+                interactive=False,
+            )
+            gr.Dataframe(
+                value=metric_json_table("llm_finetune_metrics"),
+                label="Driver LLM fine-tune metrics",
+                interactive=False,
+            )
+        extra_files = [
+            ARTIFACTS["a_plus_dir"] / "llm_train.jsonl",
+            ARTIFACTS["a_plus_dir"] / "llm_eval.jsonl",
+            ARTIFACTS["a_plus_dir"] / "copilot_eval.csv",
+        ]
+        for extra_file in extra_files:
+            if extra_file.exists():
+                gr.File(value=str(extra_file), label=extra_file.name)
+        for figure_name in [
+            "ablation_expected_tip_mae.png",
+            "calibration_curve.png",
+            "zone_flow_graph_summary.png",
+            "sequence_shift_signal.png",
+            "sequence_lstm_training.png",
+            "graph_gcn_zone_prediction.png",
+            "copilot_eval_summary.png",
+        ]:
+            figure_path = ARTIFACTS["report_dir"] / "figures" / figure_name
+            if figure_path.exists():
+                gr.Image(value=str(figure_path), label=figure_name)
 
     with gr.Tab("Maps"):
         gr.Markdown(
