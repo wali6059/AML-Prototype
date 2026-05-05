@@ -115,7 +115,7 @@ def load_artifacts() -> dict:
     zone_risk_path = report_dir / "zone_risk_summary.csv"
     subgroup_path = report_dir / "subgroup_metrics.csv"
     monthly_profile_path = report_dir / "monthly_profile_for_report.csv"
-    a_plus_dir = ARTIFACT_DIR / "a_plus"
+    experiment_dir = ARTIFACT_DIR / "experiments"
     final_metrics = _read_csv(final_metrics_path)
     zone_risk = _read_csv(zone_risk_path)
     subgroup_metrics = _read_csv(subgroup_path)
@@ -137,15 +137,15 @@ def load_artifacts() -> dict:
         "zone_risk": zone_risk,
         "subgroup_metrics": subgroup_metrics,
         "monthly_profile": monthly_profile,
-        "a_plus_dir": a_plus_dir,
-        "ablation_metrics": _read_csv(a_plus_dir / "ablation_metrics.csv"),
-        "calibration_bins": _read_csv(a_plus_dir / "calibration_bins.csv"),
-        "zone_flow_features": _read_csv(a_plus_dir / "zone_flow_features.csv"),
-        "sequence_metrics": _read_json(a_plus_dir / "sequence_metrics.json"),
-        "graph_metrics": _read_csv(a_plus_dir / "graph_metrics.csv"),
-        "copilot_eval_summary": _read_csv(a_plus_dir / "copilot_eval_summary.csv"),
-        "copilot_eval": _read_csv(a_plus_dir / "copilot_eval.csv"),
-        "llm_finetune_metrics": _read_json(a_plus_dir / "llm_finetune_metrics.json"),
+        "experiment_dir": experiment_dir,
+        "ablation_metrics": _read_csv(experiment_dir / "ablation_metrics.csv"),
+        "calibration_bins": _read_csv(experiment_dir / "calibration_bins.csv"),
+        "zone_flow_features": _read_csv(experiment_dir / "zone_flow_features.csv"),
+        "sequence_metrics": _read_json(experiment_dir / "sequence_metrics.json"),
+        "graph_metrics": _read_csv(experiment_dir / "graph_metrics.csv"),
+        "copilot_eval_summary": _read_csv(experiment_dir / "copilot_eval_summary.csv"),
+        "copilot_eval": _read_csv(experiment_dir / "copilot_eval.csv"),
+        "llm_finetune_metrics": _read_json(experiment_dir / "llm_finetune_metrics.json"),
     }
 
 
@@ -407,7 +407,7 @@ def subgroup_metrics_table(min_rows: int):
     return subset.round(4)
 
 
-def a_plus_markdown() -> str:
+def experiment_markdown() -> str:
     blocks = ["## Experiment Diagnostics", ""]
     ablation = ARTIFACTS["ablation_metrics"]
     if not ablation.empty:
@@ -1040,7 +1040,7 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
         subgroup_min_rows.change(subgroup_metrics_table, inputs=subgroup_min_rows, outputs=subgroup_table)
 
     with gr.Tab("Experiment Lab"):
-        gr.Markdown(a_plus_markdown())
+        gr.Markdown(experiment_markdown())
         with gr.Row():
             gr.Dataframe(
                 value=ARTIFACTS["ablation_metrics"].round(4) if not ARTIFACTS["ablation_metrics"].empty else pd.DataFrame({"message": ["Ablation metrics not generated."]}),
@@ -1075,9 +1075,9 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
                 interactive=False,
             )
         extra_files = [
-            ARTIFACTS["a_plus_dir"] / "llm_train.jsonl",
-            ARTIFACTS["a_plus_dir"] / "llm_eval.jsonl",
-            ARTIFACTS["a_plus_dir"] / "copilot_eval.csv",
+            ARTIFACTS["experiment_dir"] / "llm_train.jsonl",
+            ARTIFACTS["experiment_dir"] / "llm_eval.jsonl",
+            ARTIFACTS["experiment_dir"] / "copilot_eval.csv",
         ]
         for extra_file in extra_files:
             if extra_file.exists():

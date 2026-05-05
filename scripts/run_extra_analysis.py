@@ -21,7 +21,7 @@ from tip_or_skip.driver_copilot import answer_driver_question, build_driver_cont
 from tip_or_skip.extra import ablation_columns, calibration_table, flow_features, llm_examples, score_answers, sequence_rows, write_jsonl
 from tip_or_skip.metrics import classification_summary, regression_summary
 
-A_PLUS_DIR = ARTIFACT_DIR / "a_plus"
+EXPERIMENT_DIR = ARTIFACT_DIR / "experiments"
 
 
 def _xy(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> tuple[np.ndarray, np.ndarray]:
@@ -86,7 +86,7 @@ def _run_ablations(args) -> pd.DataFrame:
         use_cols = ablation_columns(features, name)
         rows.append(_fit_ablation(train, test, name, use_cols))
     out = pd.DataFrame(rows)
-    out.to_csv(A_PLUS_DIR / "ablation_metrics.csv", index=False)
+    out.to_csv(EXPERIMENT_DIR / "ablation_metrics.csv", index=False)
     fig, ax = plt.subplots(figsize=(8.5, 4.5))
     order = out.sort_values("expected_tip_mae")
     ax.bar(order["ablation"], order["expected_tip_mae"], color="#335c67")
@@ -112,7 +112,7 @@ def _predictions(model_name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
 def _run_calibration(model_name: str) -> pd.DataFrame:
     frame, pred = _predictions(model_name)
     table = calibration_table(frame["tip_given"], pred["tip_probability"], bins=10)
-    table.to_csv(A_PLUS_DIR / "calibration_bins.csv", index=False)
+    table.to_csv(EXPERIMENT_DIR / "calibration_bins.csv", index=False)
     fig, ax = plt.subplots(figsize=(5.8, 5.2))
     ax.plot([0, 1], [0, 1], color="#999999", linestyle="--")
     ax.plot(table["predicted"], table["actual"], marker="o", linewidth=2.0, color="#176b54")
@@ -142,7 +142,7 @@ def _run_flow_and_sequence() -> tuple[pd.DataFrame, pd.DataFrame]:
     )
     test = trips[trips["time_split"] == "test"].copy()
     flow = flow_features(test)
-    flow.to_csv(A_PLUS_DIR / "zone_flow_features.csv", index=False)
+    flow.to_csv(EXPERIMENT_DIR / "zone_flow_features.csv", index=False)
     top = flow.head(15).sort_values("flow_count")
     fig, ax = plt.subplots(figsize=(8.5, 5.2))
     ax.barh(top["zone"], top["flow_count"], color="#e09f3e")
@@ -153,7 +153,7 @@ def _run_flow_and_sequence() -> tuple[pd.DataFrame, pd.DataFrame]:
     plt.close(fig)
 
     seq = sequence_rows(trips)
-    seq.to_csv(A_PLUS_DIR / "sequence_rows.csv", index=False)
+    seq.to_csv(EXPERIMENT_DIR / "sequence_rows.csv", index=False)
     fig, ax = plt.subplots(figsize=(7.2, 5.2))
     ax.scatter(seq["tip_rate"], seq["tip_rate_next"], alpha=0.35, s=16, color="#335c67")
     ax.set_title("Hourly Sequence Signal")
@@ -195,7 +195,7 @@ def _run_copilot_and_llm() -> pd.DataFrame:
         answers.append(answer_driver_question(question, context))
     case_df = pd.DataFrame(cases)
     scored = score_answers(case_df, answers)
-    scored.to_csv(A_PLUS_DIR / "copilot_eval.csv", index=False)
+    scored.to_csv(EXPERIMENT_DIR / "copilot_eval.csv", index=False)
     summary = pd.DataFrame(
         [
             {"check": "zone", "pass_rate": scored["has_zone"].mean()},
@@ -204,7 +204,7 @@ def _run_copilot_and_llm() -> pd.DataFrame:
             {"check": "overall", "pass_rate": scored["score"].mean()},
         ]
     )
-    summary.to_csv(A_PLUS_DIR / "copilot_eval_summary.csv", index=False)
+    summary.to_csv(EXPERIMENT_DIR / "copilot_eval_summary.csv", index=False)
     fig, ax = plt.subplots(figsize=(6.4, 4.2))
     ax.bar(summary["check"], summary["pass_rate"], color="#176b54")
     ax.set_ylim(0, 1.05)
@@ -217,8 +217,8 @@ def _run_copilot_and_llm() -> pd.DataFrame:
 
     examples = llm_examples(zones[zones["rows"] >= 50], limit=220)
     split = max(1, int(len(examples) * 0.85))
-    write_jsonl(A_PLUS_DIR / "llm_train.jsonl", examples[:split])
-    write_jsonl(A_PLUS_DIR / "llm_eval.jsonl", examples[split:])
+    write_jsonl(EXPERIMENT_DIR / "llm_train.jsonl", examples[:split])
+    write_jsonl(EXPERIMENT_DIR / "llm_eval.jsonl", examples[split:])
     return scored
 
 
@@ -229,14 +229,14 @@ def main() -> None:
     parser.add_argument("--calibration-model", default="tree_hurdle")
     args = parser.parse_args()
     ensure_directories()
-    A_PLUS_DIR.mkdir(parents=True, exist_ok=True)
+    EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
     outputs = {
         "ablation": len(_run_ablations(args)),
         "calibration": len(_run_calibration(args.calibration_model)),
         "flow_sequence": [len(x) for x in _run_flow_and_sequence()],
         "copilot": len(_run_copilot_and_llm()),
     }
-    (A_PLUS_DIR / "extra_summary.json").write_text(json.dumps(outputs, indent=2), encoding="utf-8")
+    (EXPERIMENT_DIR / "extra_summary.json").write_text(json.dumps(outputs, indent=2), encoding="utf-8")
     print(json.dumps(outputs, indent=2))
 
 

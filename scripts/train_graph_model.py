@@ -20,7 +20,7 @@ from tip_or_skip.config import ARTIFACT_DIR, FIGURE_DIR, ensure_directories
 from tip_or_skip.data import load_dataset
 from tip_or_skip.extra import flow_features
 
-A_PLUS_DIR = ARTIFACT_DIR / "a_plus"
+EXPERIMENT_DIR = ARTIFACT_DIR / "experiments"
 
 
 class Gcn(nn.Module):
@@ -87,7 +87,7 @@ def main() -> None:
     args = parser.parse_args()
 
     ensure_directories()
-    A_PLUS_DIR.mkdir(parents=True, exist_ok=True)
+    EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
     df = _data()
     train_df = df[df["time_split"] == "train"].copy()
     valid_df = df[df["time_split"] == "valid"].copy()
@@ -163,10 +163,10 @@ def main() -> None:
     out["gcn_tip"] = pred[:, 0].numpy()
     out["blend_tip"] = test_blend
     out["test_rows"] = test_target["target_rows"].to_numpy()
-    out.to_csv(A_PLUS_DIR / "graph_zone_predictions.csv", index=False)
-    pd.DataFrame([metrics]).to_csv(A_PLUS_DIR / "graph_metrics.csv", index=False)
-    pd.DataFrame(history).to_csv(A_PLUS_DIR / "graph_training_history.csv", index=False)
-    torch.save({"model": model.state_dict(), "zones": zones, "mean": mean, "std": std}, A_PLUS_DIR / "graph_gcn.pt")
+    out.to_csv(EXPERIMENT_DIR / "graph_zone_predictions.csv", index=False)
+    pd.DataFrame([metrics]).to_csv(EXPERIMENT_DIR / "graph_metrics.csv", index=False)
+    pd.DataFrame(history).to_csv(EXPERIMENT_DIR / "graph_training_history.csv", index=False)
+    torch.save({"model": model.state_dict(), "zones": zones, "mean": mean, "std": std}, EXPERIMENT_DIR / "graph_gcn.pt")
 
     plot_df = out[out["test_rows"] >= 50].sort_values("test_rows", ascending=False).head(120)
     fig, ax = plt.subplots(figsize=(6.2, 5.4))

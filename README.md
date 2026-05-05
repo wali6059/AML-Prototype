@@ -121,7 +121,7 @@ Important outputs:
 - `../report/Tip_or_Skip_Final_Report.tex`
 - `../report/index.html`
 - `artifacts/final_report/`
-- `artifacts/a_plus/`
+- `artifacts/experiments/`
 - `../submission/tip_or_skip_courseworks_blog.zip`
 
 The CourseWorks guideline requires a local `index.html`; the generated `../report/index.html` is self-contained and embeds the report figures directly.
