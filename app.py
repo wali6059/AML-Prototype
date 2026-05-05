@@ -408,7 +408,7 @@ def subgroup_metrics_table(min_rows: int):
 
 
 def a_plus_markdown() -> str:
-    blocks = ["## A+ Stretch Experiment Artifacts", ""]
+    blocks = ["## Experiment Diagnostics", ""]
     ablation = ARTIFACTS["ablation_metrics"]
     if not ablation.empty:
         best = ablation.sort_values("expected_tip_mae").iloc[0]
@@ -643,23 +643,35 @@ def top_zones_table(taxi_type: str):
     return subset
 
 
-def _manhattan_zones(taxi_type: str) -> pd.DataFrame:
+def _map_zones(taxi_type: str, borough: str) -> pd.DataFrame:
     zones_df = ARTIFACTS["zones"]
-    subset = zones_df[
-        (zones_df["taxi_type"] == taxi_type) & (zones_df["pickup_borough"] == "Manhattan")
-    ].copy()
+    subset = zones_df[zones_df["taxi_type"] == taxi_type].copy()
+    if borough != "All boroughs":
+        subset = subset[subset["pickup_borough"] == borough].copy()
     return subset.sort_values("trips", ascending=False)
 
 
-def build_nyc_map(taxi_type: str, metric: str) -> str:
+def build_nyc_map(taxi_type: str, borough: str, metric: str) -> str:
     metric_col = "tip_rate" if metric == "Tip Rate" else "avg_tip_amount"
-    zones = _manhattan_zones(taxi_type)
+    zones = _map_zones(taxi_type, borough)
     centroids = _load_zone_centroids()
 
     fig = folium.Figure(width="100%", height="480px")
+    center = [40.7128, -73.965]
+    zoom = 10
+    if borough == "Manhattan":
+        center, zoom = [40.754, -73.984], 12
+    elif borough == "Queens":
+        center, zoom = [40.728, -73.82], 11
+    elif borough == "Brooklyn":
+        center, zoom = [40.65, -73.95], 11
+    elif borough == "Bronx":
+        center, zoom = [40.84, -73.88], 11
+    elif borough == "Staten Island":
+        center, zoom = [40.58, -74.15], 11
     nyc_map = folium.Map(
-        location=[40.754, -73.984],
-        zoom_start=12,
+        location=center,
+        zoom_start=zoom,
         tiles="CartoDB positron",
     )
     fig.add_child(nyc_map)
@@ -687,6 +699,7 @@ def build_nyc_map(taxi_type: str, metric: str) -> str:
 
         popup_html = (
             f"<b>{zone}</b><br>"
+            f"Borough: {row['pickup_borough']}<br>"
             f"Trips sampled: {int(row['trips']):,}<br>"
             f"Avg tip rate: {row['tip_rate']:.1%}<br>"
             f"Avg tip amount: ${row['avg_tip_amount']:.2f}"
@@ -706,11 +719,12 @@ def build_nyc_map(taxi_type: str, metric: str) -> str:
     return fig._repr_html_()
 
 
-def build_map_outputs(taxi_type: str, metric: str):
+def map_zone_table(taxi_type: str, borough: str, metric: str) -> pd.DataFrame:
     metric_col = "tip_rate" if metric == "Tip Rate" else "avg_tip_amount"
-    zones = _manhattan_zones(taxi_type).sort_values(metric_col, ascending=False)
-    table = zones[["pickup_zone", "trips", "tip_rate", "avg_tip_amount"]].rename(
+    zones = _map_zones(taxi_type, borough).sort_values(metric_col, ascending=False)
+    table = zones[["pickup_borough", "pickup_zone", "trips", "tip_rate", "avg_tip_amount"]].rename(
         columns={
+            "pickup_borough": "Borough",
             "pickup_zone": "Zone",
             "trips": "Trips",
             "tip_rate": "Tip Rate",
@@ -719,9 +733,13 @@ def build_map_outputs(taxi_type: str, metric: str):
     )
     table["Tip Rate"] = table["Tip Rate"].round(3)
     table["Avg Tip ($)"] = table["Avg Tip ($)"].round(2)
+    return table
 
+
+def build_map_outputs(taxi_type: str, borough: str, metric: str):
+    table = map_zone_table(taxi_type, borough, metric)
     try:
-        map_html = build_nyc_map(taxi_type, metric)
+        map_html = build_nyc_map(taxi_type, borough, metric)
     except Exception as exc:
         map_html = (
             "<div style='padding:1rem;border:1px solid #ddd;border-radius:12px;'>"
@@ -768,7 +786,7 @@ def final_zone_rankings(taxi_type: str, borough: str, objective: str, top_k: int
 INITIAL_MONTHLY_PLOT = plot_monthly_trends("yellow")
 INITIAL_HOURLY_PLOT = plot_hourly_trends("yellow")
 INITIAL_ZONE_TABLE = top_zones_table("yellow")
-INITIAL_MAP_HTML, INITIAL_MAP_TABLE = build_map_outputs("yellow", "Tip Rate")
+INITIAL_MAP_HTML, INITIAL_MAP_TABLE = build_map_outputs("yellow", "All boroughs", "Tip Rate")
 
 
 with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
@@ -1021,7 +1039,7 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
         )
         subgroup_min_rows.change(subgroup_metrics_table, inputs=subgroup_min_rows, outputs=subgroup_table)
 
-    with gr.Tab("A+ Lab"):
+    with gr.Tab("Experiment Lab"):
         gr.Markdown(a_plus_markdown())
         with gr.Row():
             gr.Dataframe(
@@ -1079,11 +1097,16 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
 
     with gr.Tab("Maps"):
         gr.Markdown(
-            "## Manhattan Zone Tip Map\n"
-            "Per-zone tipping patterns across Manhattan neighborhoods. Circle size and color reflect the selected metric."
+            "## NYC Zone Tip Map\n"
+            "Per-zone tipping patterns across boroughs. Circle size and color reflect the selected metric."
         )
         with gr.Row():
             map_taxi_type = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
+            map_borough = gr.Dropdown(
+                ["All boroughs", "Manhattan", "Queens", "Brooklyn", "Bronx", "Staten Island", "EWR", "Unknown"],
+                value="All boroughs",
+                label="Pickup borough",
+            )
             map_metric = gr.Dropdown(
                 ["Tip Rate", "Avg Tip Amount"],
                 value="Tip Rate",
@@ -1091,20 +1114,25 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
             )
         render_map_button = gr.Button("Render Map", variant="primary")
         map_display = gr.HTML(value=INITIAL_MAP_HTML, label="NYC Tip Map")
-        map_table = gr.Dataframe(value=INITIAL_MAP_TABLE, label="Manhattan zones", interactive=False)
+        map_table = gr.Dataframe(value=INITIAL_MAP_TABLE, label="NYC zones", interactive=False)
         render_map_button.click(
             fn=build_map_outputs,
-            inputs=[map_taxi_type, map_metric],
+            inputs=[map_taxi_type, map_borough, map_metric],
             outputs=[map_display, map_table],
         )
         map_taxi_type.change(
             fn=build_map_outputs,
-            inputs=[map_taxi_type, map_metric],
+            inputs=[map_taxi_type, map_borough, map_metric],
+            outputs=[map_display, map_table],
+        )
+        map_borough.change(
+            fn=build_map_outputs,
+            inputs=[map_taxi_type, map_borough, map_metric],
             outputs=[map_display, map_table],
         )
         map_metric.change(
             fn=build_map_outputs,
-            inputs=[map_taxi_type, map_metric],
+            inputs=[map_taxi_type, map_borough, map_metric],
             outputs=[map_display, map_table],
         )
 

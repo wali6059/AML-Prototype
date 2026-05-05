@@ -59,7 +59,7 @@ For both yellow and green taxi subsets, the current baseline uses histogram-base
 - sampled rows for display in the app,
 - supporting markdown files for the dataset notes and project blog.
 
-The merged app also includes a Manhattan zone map view built with `folium`, using TLC zone geometry fetched at runtime so the interface can visualize zone-level tip rate and average tip amount patterns.
+The merged app also includes an NYC zone map view built with `folium`, using TLC zone geometry fetched at runtime so the interface can visualize zone-level tip rate and average tip amount patterns across boroughs.
 
 ## What The Space Shows
 
@@ -70,8 +70,8 @@ The merged app also includes a Manhattan zone map view built with `folium`, usin
 - A what-if sensitivity panel that sweeps pickup hour, fare, distance, or duration to show how predictions move.
 - An exploration tab with precomputed monthly, hourly, and zone-level summaries.
 - A model lab tab with final model comparisons, frozen-dataset monthly profiles, and borough subgroup metrics.
-- An A+ Lab tab with feature ablations, calibration bins, graph-flow metrics, sequence LSTM metrics, copilot checks, and driver-LLM fine-tune metrics.
-- A maps tab that visualizes Manhattan tipping patterns.
+- An Experiment Lab tab with feature ablations, calibration bins, graph-flow metrics, sequence LSTM metrics, copilot checks, and driver-LLM fine-tune metrics.
+- A maps tab that visualizes borough-level NYC tipping patterns.
 - A final results tab with the self-contained offline `index.html`, final metrics, and available local report assets.
 - A shift planner tab that ranks zones by expected tip, lower-tail risk, or tip probability.
 - A blog tab that displays the project background text from `blog_background.md`.
@@ -104,7 +104,7 @@ The final report generator writes both a paper-style PDF and an offline HTML blo
 python scripts/generate_latex_report.py
 ```
 
-The A+ stretch artifacts are generated with:
+The model diagnostics and sequence/graph/language experiment artifacts are generated with:
 
 ```bash
 python scripts/run_extra_analysis.py --sample-train 180000 --sample-test 120000

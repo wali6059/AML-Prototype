@@ -99,67 +99,9 @@ The results therefore separate two notions of success. For point prediction, the
 \caption{Recorded electronic tip rate by month for Yellow and Green taxi trips in the frozen dataset.}
 \end{figure}
 
-\section{Subgroup Behavior and Spatial Risk}
-Because the dataset is geographically uneven, aggregate metrics can hide important differences. We therefore compute subgroup metrics by taxi type and pickup borough. Large Manhattan slices dominate the data, while smaller borough slices tend to be noisier and less calibrated. This matters for deployment because a driver-facing recommendation should show uncertainty and observed trip counts, not only a sorted list of high-value zones.
 
-\begin{table}[H]
-\centering
-\caption{Largest Transformer-MDN subgroup evaluation slices.}
-\begin{tabular}{llrrr}
-\toprule
-Taxi & Pickup borough & Rows & ROC-AUC & F1 \\
-\midrule
-yellow & Manhattan & 319,329 & 0.632 & 0.960 \\
-green & Manhattan & 95,085 & 0.693 & 0.741 \\
-yellow & Queens & 33,615 & 0.786 & 0.769 \\
-green & Queens & 27,821 & 0.632 & 0.081 \\
-green & Brooklyn & 20,035 & 0.579 & 0.291 \\
-yellow & Brooklyn & 4,777 & 0.983 & 0.551 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-\centering
-\caption{Top final-model pickup zones by expected tip among zones with at least 50 observed test rows.}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{lllrrr}
-\toprule
-Taxi & Borough & Zone & Rows & Expected tip & Q10 tip \\
-\midrule
-yellow & Queens & JFK Airport & 16,481 & \$6.15 & \$6.38 \\
-yellow & Queens & LaGuardia Airport & 12,815 & \$5.84 & \$5.66 \\
-yellow & Queens & East Elmhurst & 1,244 & \$4.29 & \$5.45 \\
-yellow & Queens & Flushing Meadows-Corona Park & 182 & \$3.99 & \$5.00 \\
-green & Brooklyn & Red Hook & 606 & \$3.49 & \$4.37 \\
-green & Brooklyn & Flatbush/Ditmas Park & 72 & \$3.47 & \$5.12 \\
-\bottomrule
-\end{tabular}}
-\end{table}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.9\linewidth]{figures/top_zone_expected_tip.png}
-\caption{Top Manhattan pickup zones by predicted expected tip according to the final uncertainty-aware model.}
-\end{figure}
-
-\section{Interactive Hugging Face Demo}
-The Hugging Face Space is part of the final ML artifact, not only a visualization wrapper. The demo includes a grounded tipping-facts assistant that answers questions using the frozen dataset summary, final metrics, subgroup table, and zone-risk table. If a Hugging Face Inference API token and model are configured, the app can route these grounded facts through a hosted language model; otherwise it uses deterministic artifact retrieval. This keeps the assistant reliable for grading and prevents unsupported claims.
-
-The demo also includes a prediction form for hypothetical credit-card trips, a what-if sensitivity sweep over pickup hour, fare, distance, or duration, final model-comparison controls, monthly dataset profiles, subgroup metrics, a Manhattan map, and a risk-aware shift planner. The shift planner can optimize for expected tip, downside $Q_{0.10}$ tip, or predicted tip probability. These controls expose the machine learning behavior directly: users can see how changing inputs changes predictions and how different objectives change zone rankings.
-
-The intended inspection workflow is sequential. A reader can first ask the assistant what dataset and target were used, then compare model metrics in the model lab, then construct a hypothetical trip and run a sensitivity sweep, and finally inspect whether zone recommendations change under risk-neutral versus risk-averse objectives. This makes the demo a compact model-audit tool rather than a static dashboard.
-
-\section{Driver-Facing LLM Copilot}
-The final interface includes a driver-facing LLM layer called Driver Copilot. Its purpose is to let a driver ask natural questions about ride choice and shift planning, such as: ``I am at Midtown Center and got two ride options, JFK Airport or LaGuardia Airport. Which one should I choose?'' The copilot parses the prompt, identifies known TLC zones and aliases, retrieves final model outputs for those zones, and answers with a recommendation grounded in expected tip, downside $Q_{0.10}$ tip, predicted tip probability, and observed held-out trip count.
-
-The live demo uses retrieval-grounded answers as the default because the core evidence is structured and numeric. The deterministic layer maps driver language to zone-level and trip-level model outputs. We also generated instruction-tuning examples from the zone-risk table and trained a compact driver LLM as a stretch artifact. The tuned LLM is evaluated separately for grounding behavior, while the public Space keeps the deterministic layer available even when no Hugging Face inference token is configured.
-
-This component turns the machine learning results into a usable driver workflow. For a single area, the copilot classifies the area as strong, solid, or lower relative to comparable zones. For two candidate areas, it recommends the option with higher expected electronic tip and reports the gap. The structured comparison form additionally uses the deployed two-stage trip predictor to compare two rides with specified pickup area, dropoff areas, hour, weekday, month, distance, fare, and duration. The result is an LLM-style planning layer whose outputs are auditable rather than free-form.
-
-
-\section{A+ Stretch Experiments}
-The core project already includes a frozen dataset, baselines, a deep distributional model, subgroup analysis, and an interactive demo. To push the project further, we added a set of smaller experiments connected to the later lecture topics. These were ablations and calibration checks for model soundness, a taxi-zone graph experiment, a next-hour LSTM sequence experiment, and a driver-assistant language-model fine-tuning run. I treat these as model-audit tools, not as guaranteed improvements.
+\section{Ablation, Calibration, Temporal, Graph, and Language Experiments}
+After the main model comparison, the experiment path turns to model behavior. The next set of experiments asks what information the model uses, whether predicted probabilities are calibrated, whether taxi-zone flow structure helps, whether recent hourly history predicts the next hour, and whether the driver-facing language layer stays grounded in numeric model outputs. These experiments are part of the same evaluation pipeline as the baselines and Transformer-MDN, because they test reliability and usability rather than only point error.
 
 \begin{table}[H]
 \centering
@@ -215,7 +157,7 @@ Probability bin & Rows & Predicted & Actual & Gap \\
 
 The ablation answers a basic question: what is the model leaning on? Removing zone features, time features, fare fields, or distance fields changes the error profile and makes the strongest feature groups visible. The calibration curve answers a different question: when the model says that a tip is likely, does that probability behave like a probability? These checks are important because the demo uses predicted probabilities to rank rides.
 
-The graph stretch experiment represents TLC zones as nodes and pickup-dropoff traffic as edges. Node features include pickup volume, dropoff volume, in-degree, out-degree, average tip, and tip rate from the training period. A small graph convolution model then predicts future zone-level tip behavior. The graph model used 259 TLC zone nodes. Its test zone-tip MAE was \$1.21; the temporal naive baseline was \$0.41. This was a useful negative result because it showed that simple year-to-year zone stability was hard to beat.
+The graph-flow experiment represents TLC zones as nodes and pickup-dropoff traffic as edges. Node features include pickup volume, dropoff volume, in-degree, out-degree, average tip, and tip rate from the training period. A small graph convolution model then predicts future zone-level tip behavior. The graph model used 259 TLC zone nodes. Its test zone-tip MAE was \$1.21; the temporal naive baseline was \$0.41. This was a useful negative result because it showed that simple year-to-year zone stability was hard to beat.
 
 
 \begin{figure}[H]
@@ -232,7 +174,7 @@ The graph stretch experiment represents TLC zones as nodes and pickup-dropoff tr
 \end{figure}
 
 
-The sequence stretch experiment aggregates rides into hourly time series by taxi type and pickup borough. A small LSTM reads the previous six hourly summaries and predicts the next hour's tip rate and average tip. The LSTM next-hour experiment used 43,065 test windows. Its average-tip MAE was \$1.80, compared with \$2.40 for a last-hour naive baseline. The tip-rate MAE was 0.148. This connects the project to the RNN/LSTM part of the course and gives a first version of shift-planning over time rather than only over zones.
+The temporal sequence experiment aggregates rides into hourly time series by taxi type and pickup borough. A small LSTM reads the previous six hourly summaries and predicts the next hour's tip rate and average tip. The LSTM next-hour experiment used 43,065 test windows. Its average-tip MAE was \$1.80, compared with \$2.40 for a last-hour naive baseline. The tip-rate MAE was 0.148. This connects the project to the RNN/LSTM part of the course and gives a first version of shift-planning over time rather than only over zones.
 
 
 \begin{figure}[H]
@@ -259,6 +201,64 @@ The driver-copilot layer was also evaluated directly. We created scripted ride-c
 \end{figure}
 
 
+
+\section{Subgroup Behavior and Spatial Risk}
+Because the dataset is geographically uneven, aggregate metrics can hide important differences. We therefore compute subgroup metrics by taxi type and pickup borough. Large Manhattan slices dominate the data, while smaller borough slices tend to be noisier and less calibrated. This matters for deployment because a driver-facing recommendation should show uncertainty and observed trip counts, not only a sorted list of high-value zones.
+
+\begin{table}[H]
+\centering
+\caption{Largest Transformer-MDN subgroup evaluation slices.}
+\begin{tabular}{llrrr}
+\toprule
+Taxi & Pickup borough & Rows & ROC-AUC & F1 \\
+\midrule
+yellow & Manhattan & 319,329 & 0.632 & 0.960 \\
+green & Manhattan & 95,085 & 0.693 & 0.741 \\
+yellow & Queens & 33,615 & 0.786 & 0.769 \\
+green & Queens & 27,821 & 0.632 & 0.081 \\
+green & Brooklyn & 20,035 & 0.579 & 0.291 \\
+yellow & Brooklyn & 4,777 & 0.983 & 0.551 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Top final-model pickup zones by expected tip among zones with at least 50 observed test rows.}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lllrrr}
+\toprule
+Taxi & Borough & Zone & Rows & Expected tip & Q10 tip \\
+\midrule
+yellow & Queens & JFK Airport & 16,481 & \$6.15 & \$6.38 \\
+yellow & Queens & LaGuardia Airport & 12,815 & \$5.84 & \$5.66 \\
+yellow & Queens & East Elmhurst & 1,244 & \$4.29 & \$5.45 \\
+yellow & Queens & Flushing Meadows-Corona Park & 182 & \$3.99 & \$5.00 \\
+green & Brooklyn & Red Hook & 606 & \$3.49 & \$4.37 \\
+green & Brooklyn & Flatbush/Ditmas Park & 72 & \$3.47 & \$5.12 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{figures/top_zone_expected_tip.png}
+\caption{Top Manhattan pickup zones by predicted expected tip according to the final uncertainty-aware model.}
+\end{figure}
+
+\section{Interactive Hugging Face Demo}
+The Hugging Face Space is part of the final ML artifact, not only a visualization wrapper. The demo includes a grounded tipping-facts assistant that answers questions using the frozen dataset summary, final metrics, subgroup table, and zone-risk table. If a Hugging Face Inference API token and model are configured, the app can route these grounded facts through a hosted language model; otherwise it uses deterministic artifact retrieval. This keeps the assistant reliable for grading and prevents unsupported claims.
+
+The demo also includes a prediction form for hypothetical credit-card trips, a what-if sensitivity sweep over pickup hour, fare, distance, or duration, final model-comparison controls, monthly dataset profiles, subgroup metrics, a Manhattan map, and a risk-aware shift planner. The shift planner can optimize for expected tip, downside $Q_{0.10}$ tip, or predicted tip probability. These controls expose the machine learning behavior directly: users can see how changing inputs changes predictions and how different objectives change zone rankings.
+
+The intended inspection workflow is sequential. A reader can first ask the assistant what dataset and target were used, then compare model metrics in the model lab, then construct a hypothetical trip and run a sensitivity sweep, and finally inspect whether zone recommendations change under risk-neutral versus risk-averse objectives. This makes the demo a compact model-audit tool rather than a static dashboard.
+
+\section{Driver-Facing LLM Copilot}
+The final interface includes a driver-facing LLM layer called Driver Copilot. Its purpose is to let a driver ask natural questions about ride choice and shift planning, such as: ``I am at Midtown Center and got two ride options, JFK Airport or LaGuardia Airport. Which one should I choose?'' The copilot parses the prompt, identifies known TLC zones and aliases, retrieves final model outputs for those zones, and answers with a recommendation grounded in expected tip, downside $Q_{0.10}$ tip, predicted tip probability, and observed held-out trip count.
+
+The live demo uses retrieval-grounded answers as the default because the core evidence is structured and numeric. The deterministic layer maps driver language to zone-level and trip-level model outputs. We also generated instruction-tuning examples from the zone-risk table and trained a compact driver LLM on those examples. The tuned LLM is evaluated separately for grounding behavior, while the public Space keeps the deterministic layer available even when no Hugging Face inference token is configured.
+
+This component turns the machine learning results into a usable driver workflow. For a single area, the copilot classifies the area as strong, solid, or lower relative to comparable zones. For two candidate areas, it recommends the option with higher expected electronic tip and reports the gap. The structured comparison form additionally uses the deployed two-stage trip predictor to compare two rides with specified pickup area, dropoff areas, hour, weekday, month, distance, fare, and duration. The result is an LLM-style planning layer whose outputs are auditable rather than free-form.
 
 \section{Limitations and Ethics}
 The most important limitation is target observability. Cash tips are not recorded in TLC \texttt{tip\_amount}, so the model should be described as predicting recorded electronic tips. A zero in the data does not necessarily mean a rider left no tip; it means no electronic tip was recorded. This affects interpretation, especially across neighborhoods or trip types where cash behavior may differ.
