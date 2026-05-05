@@ -65,6 +65,7 @@ The merged app also includes a Manhattan zone map view built with `folium`, usin
 
 - An overview tab with model metrics, dataset notes, and sample cleaned rows.
 - A grounded `Ask The Data` chat tab that answers questions from the frozen dataset summary, final metrics, subgroup table, and zone-risk table.
+- A `Driver Copilot` tab where a driver can ask natural ride-choice questions and compare two concrete ride options.
 - A prediction tab where a user enters a hypothetical trip and gets the predicted tip probability, conditional tip, and expected tip.
 - A what-if sensitivity panel that sweeps pickup hour, fare, distance, or duration to show how predictions move.
 - An exploration tab with precomputed monthly, hourly, and zone-level summaries.
@@ -75,6 +76,8 @@ The merged app also includes a Manhattan zone map view built with `folium`, usin
 - A blog tab that displays the project background text from `blog_background.md`.
 
 The chat assistant is deterministic by default so the demo works without secrets. If a Hugging Face Inference API model is configured through `HF_INFERENCE_MODEL` plus `HF_TOKEN` or `HUGGINGFACEHUB_API_TOKEN`, the app can rewrite grounded answers through that hosted model while still using the project artifacts as the source of truth.
+
+The driver-facing copilot works the same way: it parses the driver's prompt for TLC zone names or aliases, retrieves expected-tip and downside-risk evidence from the final model artifacts, and returns a recommendation. The structured ride-comparison form uses the deployed trip predictor directly for two user-specified ride options.
 
 ## Local build steps
 

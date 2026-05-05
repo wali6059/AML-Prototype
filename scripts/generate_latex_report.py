@@ -192,7 +192,7 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
 <header>
   <p class="meta">Applied Machine Learning Final Project - May 2026</p>
   <h1>Tip or Skip: Uncertainty-Aware NYC Taxi Tipping Prediction</h1>
-  <p class="dek">A technical project report on modeling recorded electronic tips in NYC taxi trips with baselines, a Tabular Transformer Mixture Density Network, uncertainty-aware route ranking, and an interactive Hugging Face demo.</p>
+  <p class="dek">A technical project report on modeling recorded electronic tips in NYC taxi trips with baselines, a Tabular Transformer Mixture Density Network, uncertainty-aware route ranking, and a driver-facing LLM copilot in an interactive Hugging Face demo.</p>
   <p class="meta">Wali Ahmed, Geoffrey Kim, Jiachen Tu</p>
 </header>
 
@@ -246,6 +246,13 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
   <p>The Hugging Face demo turns the trained artifacts into an interactive ML system. Users can ask a grounded tipping-facts assistant about the dataset, model behavior, top zones, uncertainty, and limitations. They can edit hypothetical trip inputs, run what-if sensitivity sweeps over hour, fare, distance, or duration, inspect final model metrics, compare subgroup performance, view maps, and rank zones using risk-neutral, risk-averse, or probability objectives.</p>
   <p>The assistant is deliberately grounded in project artifacts rather than open-ended text generation. If an optional Hugging Face Inference API model and token are configured, the app can rewrite grounded answers through a hosted language model; otherwise it uses deterministic retrieval from the final dataset summary, metrics, subgroup table, and zone-risk table. This keeps the demo reliable for grading while still showing how language interfaces can sit on top of ML results.</p>
   <p>The most useful way to inspect the demo is to move across tabs as if evaluating a model audit. Start with the assistant to ask what the dataset is and which model wins. Then use the prediction form to create a trip, run a sensitivity sweep, and watch how predicted expected tip changes. Finally, use the model lab and shift planner to compare aggregate metrics against zone-level recommendations. This workflow makes the project interactive without hiding the underlying evidence.</p>
+</section>
+
+<section>
+  <h2>Driver-Facing LLM Copilot</h2>
+  <p>The final demo adds a driver-facing LLM layer called Driver Copilot. The goal is not to make a generic chatbot that talks about taxis; it is to make a natural-language decision layer over the trained tipping system. A driver can ask questions such as: “I am at Midtown Center and got ride options to JFK Airport or LaGuardia Airport. Which should I choose?” The copilot extracts the relevant TLC zones, retrieves the final model’s expected tip, downside Q10 tip, predicted tip probability, and observed trip count, then returns a recommendation with evidence.</p>
+  <p>We built this as a retrieval-grounded LLM interface rather than fine-tuning a large language model from scratch. The dataset is structured and numeric, so the reliable part of the system should be the trained tipping model and report artifacts. The language layer parses the driver’s prompt, maps area names and common aliases to TLC zones, compares candidate areas, and optionally passes the grounded answer through a Hugging Face text-generation model if an inference token is configured. Without a token, the deterministic grounded response still works in the public Space.</p>
+  <p>The result is a practical shift-planning assistant. For single-area prompts, it labels an area as strong, solid, or lower relative to comparable zones. For two-option prompts, it recommends the option with higher expected electronic tip and reports the expected-tip gap plus downside-risk evidence. The structured comparison form goes further by using the deployed two-stage trip model to compare two concrete rides with user-specified pickup area, dropoff areas, hour, weekday, month, distance, fare, and duration. This makes the LLM layer an interface to the machine learning system, not a replacement for it.</p>
 </section>
 
 <section>
@@ -417,6 +424,13 @@ The demo also includes a prediction form for hypothetical credit-card trips, a w
 
 The intended inspection workflow is sequential. A reader can first ask the assistant what dataset and target were used, then compare model metrics in the model lab, then construct a hypothetical trip and run a sensitivity sweep, and finally inspect whether zone recommendations change under risk-neutral versus risk-averse objectives. This makes the demo a compact model-audit tool rather than a static dashboard.
 
+\section{{Driver-Facing LLM Copilot}}
+The final interface includes a driver-facing LLM layer called Driver Copilot. Its purpose is to let a driver ask natural questions about ride choice and shift planning, such as: ``I am at Midtown Center and got two ride options, JFK Airport or LaGuardia Airport. Which one should I choose?'' The copilot parses the prompt, identifies known TLC zones and aliases, retrieves final model outputs for those zones, and answers with a recommendation grounded in expected tip, downside $Q_{{0.10}}$ tip, predicted tip probability, and observed held-out trip count.
+
+We did not fine-tune a general language model from scratch because the core evidence is structured. Instead, we built a retrieval-grounded LLM interface over the trained tipping artifacts. The deterministic layer maps driver language to zone-level and trip-level model outputs. If a Hugging Face Inference API token and model are configured, the app can pass the grounded answer through a hosted text-generation model for conversational rewriting. If no token is configured, the public demo still works because the grounded response itself is generated from the project artifacts.
+
+This component turns the machine learning results into a usable driver workflow. For a single area, the copilot classifies the area as strong, solid, or lower relative to comparable zones. For two candidate areas, it recommends the option with higher expected electronic tip and reports the gap. The structured comparison form additionally uses the deployed two-stage trip predictor to compare two rides with specified pickup area, dropoff areas, hour, weekday, month, distance, fare, and duration. The result is an LLM-style planning layer whose outputs are auditable rather than free-form.
+
 \section{{Limitations and Ethics}}
 The most important limitation is target observability. Cash tips are not recorded in TLC \texttt{{tip\_amount}}, so the model should be described as predicting recorded electronic tips. A zero in the data does not necessarily mean a rider left no tip; it means no electronic tip was recorded. This affects interpretation, especially across neighborhoods or trip types where cash behavior may differ.
 
@@ -435,7 +449,7 @@ python scripts/train_transformer_mdn.py --epochs 16 --batch-size 8192
 python scripts/evaluate_models.py
 python scripts/generate_latex_report.py
 \end{{verbatim}}
-The final submission zip includes this PDF, the offline \texttt{{index.html}} technical blog, the Hugging Face Space source, plots, metrics, model artifacts, and the frozen dataset package.
+The final project materials include this PDF, the offline \texttt{{index.html}} technical blog, the Hugging Face Space source, plots, metrics, model artifacts, and the frozen dataset package.
 
 \begin{{thebibliography}}{{9}}
 \bibitem{{tlc}} New York City Taxi and Limousine Commission. TLC Trip Record Data and Data Dictionaries.

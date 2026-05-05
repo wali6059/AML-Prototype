@@ -150,6 +150,13 @@ The demo also includes a prediction form for hypothetical credit-card trips, a w
 
 The intended inspection workflow is sequential. A reader can first ask the assistant what dataset and target were used, then compare model metrics in the model lab, then construct a hypothetical trip and run a sensitivity sweep, and finally inspect whether zone recommendations change under risk-neutral versus risk-averse objectives. This makes the demo a compact model-audit tool rather than a static dashboard.
 
+\section{Driver-Facing LLM Copilot}
+The final interface includes a driver-facing LLM layer called Driver Copilot. Its purpose is to let a driver ask natural questions about ride choice and shift planning, such as: ``I am at Midtown Center and got two ride options, JFK Airport or LaGuardia Airport. Which one should I choose?'' The copilot parses the prompt, identifies known TLC zones and aliases, retrieves final model outputs for those zones, and answers with a recommendation grounded in expected tip, downside $Q_{0.10}$ tip, predicted tip probability, and observed held-out trip count.
+
+We did not fine-tune a general language model from scratch because the core evidence is structured. Instead, we built a retrieval-grounded LLM interface over the trained tipping artifacts. The deterministic layer maps driver language to zone-level and trip-level model outputs. If a Hugging Face Inference API token and model are configured, the app can pass the grounded answer through a hosted text-generation model for conversational rewriting. If no token is configured, the public demo still works because the grounded response itself is generated from the project artifacts.
+
+This component turns the machine learning results into a usable driver workflow. For a single area, the copilot classifies the area as strong, solid, or lower relative to comparable zones. For two candidate areas, it recommends the option with higher expected electronic tip and reports the gap. The structured comparison form additionally uses the deployed two-stage trip predictor to compare two rides with specified pickup area, dropoff areas, hour, weekday, month, distance, fare, and duration. The result is an LLM-style planning layer whose outputs are auditable rather than free-form.
+
 \section{Limitations and Ethics}
 The most important limitation is target observability. Cash tips are not recorded in TLC \texttt{tip\_amount}, so the model should be described as predicting recorded electronic tips. A zero in the data does not necessarily mean a rider left no tip; it means no electronic tip was recorded. This affects interpretation, especially across neighborhoods or trip types where cash behavior may differ.
 
@@ -168,7 +175,7 @@ python scripts/train_transformer_mdn.py --epochs 16 --batch-size 8192
 python scripts/evaluate_models.py
 python scripts/generate_latex_report.py
 \end{verbatim}
-The final submission zip includes this PDF, the offline \texttt{index.html} technical blog, the Hugging Face Space source, plots, metrics, model artifacts, and the frozen dataset package.
+The final project materials include this PDF, the offline \texttt{index.html} technical blog, the Hugging Face Space source, plots, metrics, model artifacts, and the frozen dataset package.
 
 \begin{thebibliography}{9}
 \bibitem{tlc} New York City Taxi and Limousine Commission. TLC Trip Record Data and Data Dictionaries.

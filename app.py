@@ -23,6 +23,7 @@ matplotlib.use("Agg")
 ROOT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT_DIR / "src"))
 
+from tip_or_skip.driver_copilot import answer_driver_question, build_driver_context
 from tip_or_skip.fact_assistant import answer_question, build_fact_context, fact_cards_markdown
 from tip_or_skip.shift_planner import rank_destinations
 
@@ -137,9 +138,24 @@ FACT_CONTEXT = build_fact_context(
     ARTIFACTS["zone_risk"],
     ARTIFACTS["subgroup_metrics"],
 )
+DRIVER_CONTEXT = build_driver_context(
+    ARTIFACTS["zone_risk"],
+    ARTIFACTS["zone_options"]["zone"].tolist(),
+)
 ZONE_CHOICES = ARTIFACTS["zone_options"]["zone"].tolist()
 DEFAULT_PICKUP = "Midtown Center"
 DEFAULT_DROPOFF = "Upper East Side North"
+WEEKDAY_CHOICES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def _weekday_to_int(value: int | float | str) -> int:
+    if isinstance(value, str):
+        cleaned = value.strip()
+        weekday_lookup = {name.lower(): idx for idx, name in enumerate(WEEKDAY_CHOICES)}
+        if cleaned.lower() in weekday_lookup:
+            return weekday_lookup[cleaned.lower()]
+        return int(cleaned)
+    return int(value)
 
 
 def metrics_markdown() -> str:
@@ -183,14 +199,14 @@ def final_results_markdown() -> str:
     return "\n".join(blocks)
 
 
-def _call_optional_hf_llm(question: str, grounded_answer: str) -> str:
+def _call_optional_hf_llm(question: str, grounded_answer: str, persona: str = "data-science assistant") -> str:
     token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
     model_id = os.getenv("HF_INFERENCE_MODEL", "").strip()
     if not token or not model_id:
         return grounded_answer
 
     prompt = (
-        "You are a concise data-science assistant for an Applied Machine Learning project about NYC taxi tipping. "
+        f"You are a concise {persona} for an Applied Machine Learning project about NYC taxi tipping. "
         "Answer only from the grounded facts below. If the facts do not support a claim, say so.\n\n"
         f"Question: {question}\n\n"
         f"Grounded facts:\n{grounded_answer}\n\n"
@@ -225,6 +241,77 @@ def tipping_assistant(message: str, history):
     grounded = answer_question(message, FACT_CONTEXT)
     answer = _call_optional_hf_llm(message, grounded)
     return answer + "\n\n_Source: frozen project dataset, final model metrics, and report artifacts._"
+
+
+def driver_copilot(message: str, history):
+    grounded = answer_driver_question(message, DRIVER_CONTEXT)
+    answer = _call_optional_hf_llm(message, grounded, persona="driver-facing ride-planning copilot")
+    return answer + "\n\n_Source: final model zone-risk table and TLC credit-card tip artifacts._"
+
+
+def compare_ride_options(
+    taxi_type: str,
+    current_zone: str,
+    option_a_zone: str,
+    option_b_zone: str,
+    pickup_hour: int,
+    pickup_weekday: int | str,
+    pickup_month: int,
+    option_a_distance: float,
+    option_a_fare: float,
+    option_a_duration: float,
+    option_b_distance: float,
+    option_b_fare: float,
+    option_b_duration: float,
+):
+    option_specs = [
+        ("Option A", option_a_zone, option_a_distance, option_a_fare, option_a_duration),
+        ("Option B", option_b_zone, option_b_distance, option_b_fare, option_b_duration),
+    ]
+    rows = []
+    for label, dropoff_zone, distance, fare, duration in option_specs:
+        feature_row = _build_feature_row(
+            taxi_type=taxi_type,
+            pickup_zone=current_zone,
+            dropoff_zone=dropoff_zone,
+            pickup_hour=pickup_hour,
+            pickup_weekday=_weekday_to_int(pickup_weekday),
+            pickup_month=pickup_month,
+            trip_distance=distance,
+            fare_amount=fare,
+            trip_duration_minutes=duration,
+            vendor_id="1",
+            passenger_bucket="1",
+            ratecode="1",
+            store_and_fwd_flag="N",
+        )
+        prediction = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+        rows.append(
+            {
+                "Ride option": label,
+                "Pickup area": current_zone,
+                "Dropoff area": dropoff_zone,
+                "Tip probability": prediction["tip_probability"],
+                "Conditional tip": prediction["conditional_tip"],
+                "Expected tip": prediction["expected_tip"],
+                "Fare": fare,
+                "Distance": distance,
+                "Duration": duration,
+            }
+        )
+    table = pd.DataFrame(rows).sort_values("Expected tip", ascending=False).reset_index(drop=True)
+    best = table.iloc[0]
+    other = table.iloc[1]
+    gap = float(best["Expected tip"]) - float(other["Expected tip"])
+    summary = (
+        f"### Recommendation\n"
+        f"Choose **{best['Ride option']} to {best['Dropoff area']}** for the higher expected electronic tip.\n\n"
+        f"- Expected tip: **${best['Expected tip']:.2f}**\n"
+        f"- Tip probability: **{best['Tip probability']:.1%}**\n"
+        f"- Gap over the other option: **${gap:.2f}** expected tip\n\n"
+        "This compares recorded electronic tips only, using the deployed two-stage trip prediction model."
+    )
+    return summary, table.round(4)
 
 
 def model_comparison_table(sort_by: str):
@@ -307,7 +394,7 @@ def run_sensitivity(
     pickup_zone: str,
     dropoff_zone: str,
     pickup_month: int,
-    pickup_weekday: int,
+    pickup_weekday: int | str,
     base_hour: int,
     base_distance: float,
     base_fare: float,
@@ -394,7 +481,7 @@ def _build_feature_row(
 
     return {
         "pickup_hour": int(pickup_hour),
-        "pickup_weekday": int(pickup_weekday),
+        "pickup_weekday": _weekday_to_int(pickup_weekday),
         "pickup_month": int(pickup_month),
         "trip_distance": float(trip_distance),
         "fare_amount": float(fare_amount),
@@ -658,6 +745,66 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
             title=None,
             description=None,
             type="messages",
+        )
+
+    with gr.Tab("Driver Copilot"):
+        gr.Markdown(
+            "## Driver-Facing Ride Planner\n"
+            "Ask ride-choice questions in plain language, or compare two specific trip options with structured inputs. "
+            "The copilot is grounded in the final model's expected-tip, downside-risk, and tip-probability outputs."
+        )
+        gr.ChatInterface(
+            fn=driver_copilot,
+            examples=[
+                "I'm at Midtown Center and got two ride options: JFK Airport or LaGuardia Airport. Which should I choose?",
+                "Is Battery Park City likely to earn me a good tip tonight?",
+                "I am near Queens and can wait for JFK Airport or LaGuardia Airport. Which area has better tip upside?",
+                "Which looks better for a yellow taxi: Red Hook or JFK Airport?",
+            ],
+            title=None,
+            description=None,
+            type="messages",
+        )
+        gr.Markdown("## Structured Two-Ride Comparison")
+        with gr.Row():
+            driver_taxi_type = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
+            driver_current_zone = gr.Dropdown(ZONE_CHOICES, value=DEFAULT_PICKUP, label="Current pickup area")
+        with gr.Row():
+            driver_hour = gr.Slider(0, 23, value=18, step=1, label="Pickup hour")
+            driver_weekday = gr.Dropdown(WEEKDAY_CHOICES, value="Friday", label="Pickup weekday")
+            driver_month = gr.Slider(1, 12, value=6, step=1, label="Pickup month")
+        with gr.Row():
+            option_a_zone = gr.Dropdown(ZONE_CHOICES, value="JFK Airport", label="Option A dropoff area")
+            option_b_zone = gr.Dropdown(ZONE_CHOICES, value="LaGuardia Airport", label="Option B dropoff area")
+        with gr.Row():
+            option_a_distance = gr.Slider(0.1, 35.0, value=16.0, step=0.1, label="Option A distance")
+            option_a_fare = gr.Slider(3.0, 150.0, value=58.0, step=0.5, label="Option A fare")
+            option_a_duration = gr.Slider(1.0, 150.0, value=45.0, step=1.0, label="Option A duration")
+        with gr.Row():
+            option_b_distance = gr.Slider(0.1, 35.0, value=9.0, step=0.1, label="Option B distance")
+            option_b_fare = gr.Slider(3.0, 150.0, value=38.0, step=0.5, label="Option B fare")
+            option_b_duration = gr.Slider(1.0, 150.0, value=28.0, step=1.0, label="Option B duration")
+        compare_button = gr.Button("Compare ride options", variant="primary")
+        driver_summary = gr.Markdown()
+        driver_table = gr.Dataframe(interactive=False, label="Ride comparison")
+        compare_button.click(
+            fn=compare_ride_options,
+            inputs=[
+                driver_taxi_type,
+                driver_current_zone,
+                option_a_zone,
+                option_b_zone,
+                driver_hour,
+                driver_weekday,
+                driver_month,
+                option_a_distance,
+                option_a_fare,
+                option_a_duration,
+                option_b_distance,
+                option_b_fare,
+                option_b_duration,
+            ],
+            outputs=[driver_summary, driver_table],
         )
 
     with gr.Tab("Predict"):
