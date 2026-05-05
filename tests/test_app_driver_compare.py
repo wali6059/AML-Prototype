@@ -1,4 +1,5 @@
 import app
+from pathlib import Path
 
 
 def test_compare_ride_options_accepts_weekday_label_from_ui():
@@ -21,3 +22,18 @@ def test_compare_ride_options_accepts_weekday_label_from_ui():
     assert "Recommendation" in summary
     assert len(table) == 2
     assert set(table["Ride option"]) == {"Option A", "Option B"}
+
+
+def test_map_table_can_show_multiple_boroughs():
+    table = app.map_zone_table("yellow", "All boroughs", "Tip Rate")
+
+    assert "Borough" in table.columns
+    assert table["Borough"].nunique() > 1
+
+
+def test_report_generator_does_not_frame_work_as_a_plus_stretch():
+    text = Path("scripts/generate_latex_report.py").read_text(encoding="utf-8").lower()
+
+    assert "a+ stretch" not in text
+    assert "stretch artifact" not in text
+    assert "to push the project further" not in text
