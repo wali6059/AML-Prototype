@@ -1,75 +1,70 @@
 from __future__ import annotations
-import json, shutil
-from pathlib import Path
-import pandas as pd
-import torch
-from prototype_pipeline import ARTIFACT_DIR, ROOT_DIR, sample_taxi_data, train_models
 
-def main():
-    print("--- Starting Artifact Generation Pipeline ---")
-    
-    if ARTIFACT_DIR.exists(): 
-        print(f"Cleaning existing artifacts at {ARTIFACT_DIR}...")
-        shutil.rmtree(ARTIFACT_DIR)
-    
+import shutil
+from pathlib import Path
+
+import pandas as pd
+
+from prototype_pipeline import (
+    ARTIFACT_DIR,
+    ROOT_DIR,
+    RAW_DATA_DIR,
+    load_zone_lookup,
+    sample_taxi_data,
+    save_metrics,
+    save_model_bundle,
+    save_summary_tables,
+    train_models,
+)
+
+
+def copy_blog_background() -> None:
+    source = ROOT_DIR / "blog_background.md"
+    target = ARTIFACT_DIR / "blog_background.md"
+    shutil.copyfile(source, target)
+
+
+def write_dataset_card() -> None:
+    zone_lookup = load_zone_lookup(RAW_DATA_DIR)
+    lines = [
+        "# Dataset Notes",
+        "",
+        "This Space ships compact artifacts generated from the NYC TLC 2025 taxi trip data stored locally during development.",
+        "",
+        "- Raw data directory during development: the parent `Prototype/` folder.",
+        "- Source tables: 12 monthly yellow taxi parquet files and 12 monthly green taxi parquet files.",
+        f"- Taxi zones available: {len(zone_lookup)} location IDs.",
+        "- Training scope: credit-card trips only, because TLC `tip_amount` excludes cash tips.",
+        "- Cleaning rules: dropped rows with nonpositive fare, nonpositive trip distance, and nonpositive trip duration.",
+        "- Split policy: January-September train, October validation, November-December test.",
+        "",
+        "The app reads only saved artifacts and does not require the raw parquet files at runtime.",
+    ]
+    (ARTIFACT_DIR / "dataset_notes.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def main() -> None:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     all_metrics = {}
     combined_frames = []
 
     for taxi_type in ("yellow", "green"):
-        print(f"\n>> Processing {taxi_type.upper()} taxi data...")
-        df = sample_taxi_data(taxi_type)
-        
-        if df.empty:
-            print(f"   Warning: No data found for {taxi_type}, skipping.")
-            continue
-            
-        print(f"   Loaded {len(df)} rows. Starting training...")
+        print(f"Loading and sampling {taxi_type} taxi data...")
+        df = sample_taxi_data(taxi_type=taxi_type, base_dir=RAW_DATA_DIR)
         combined_frames.append(df)
-        model, preprocessor, metrics = train_models(df)
-        
-        # 保存为 PyTorch Bundle
-        print(f"   Saving {taxi_type} model bundle...")
-        bundle = {
-            "model_state": model.state_dict(), 
-            "preprocessor": preprocessor, 
-            "config": {
-                "num_numeric": 6, 
-                "cat_cardinalities": [len(c) for c in preprocessor.transformers_[1][1].categories_]
-            }
-        }
-        torch.save(bundle, ARTIFACT_DIR / f"{taxi_type}_v2_model.pth")
+        print(f"Training models for {taxi_type} taxi data on {len(df):,} sampled rows...")
+        classifier, regressor, metrics = train_models(df)
+        save_model_bundle(classifier, regressor, taxi_type)
         all_metrics[taxi_type] = metrics
-        print(f"   {taxi_type.upper()} Training Complete. AUC: {metrics['roc_auc']:.4f}")
+        print(f"Saved {taxi_type} model bundle.")
 
-    if not combined_frames:
-        print("\nERROR: No data was processed. Check your data folder and file names.")
-        return
-
-    print("\n>> Generating summary tables and auxiliary files...")
     combined = pd.concat(combined_frames, ignore_index=True)
-    
-    # 生成统计表
-    combined.groupby(["taxi_type", "pickup_month"]).agg(trips=("tip_given", "size"), tip_rate=("tip_given", "mean"), avg_tip_amount=("tip_amount", "mean")).reset_index().to_csv(ARTIFACT_DIR / "monthly_summary.csv", index=False)
-    combined.groupby(["taxi_type", "pickup_hour"]).agg(trips=("tip_given", "size"), tip_rate=("tip_given", "mean"), avg_tip_amount=("tip_amount", "mean")).reset_index().to_csv(ARTIFACT_DIR / "hourly_summary.csv", index=False)
-    combined.groupby(["taxi_type", "pickup_borough", "pickup_zone"]).agg(trips=("tip_given", "size"), tip_rate=("tip_given", "mean"), avg_tip_amount=("tip_amount", "mean")).reset_index().to_csv(ARTIFACT_DIR / "zone_summary.csv", index=False)
-    combined[["pickup_zone", "pickup_borough"]].drop_duplicates().rename(columns={"pickup_zone": "zone", "pickup_borough": "borough"}).to_csv(ARTIFACT_DIR / "zone_options.csv", index=False)
-    combined.head(500).to_csv(ARTIFACT_DIR / "sample_rows.csv", index=False)
-    
-    print(">> Writing metrics and documentation...")
-    with (ARTIFACT_DIR / "metrics.json").open("w") as f: 
-        json.dump(all_metrics, f, indent=2)
-    
-    # 安全拷贝文件
-    bg_path = ROOT_DIR / "blog_background.md"
-    if bg_path.exists():
-        shutil.copyfile(bg_path, ARTIFACT_DIR / "blog_background.md")
-    else:
-        (ARTIFACT_DIR / "blog_background.md").write_text("# Blog Draft\n(Background file missing during build)")
-        
-    (ARTIFACT_DIR / "dataset_notes.md").write_text("# Dataset Notes\nTabular Transformer + MDN Prototype.")
+    save_summary_tables(combined)
+    save_metrics(all_metrics)
+    copy_blog_background()
+    write_dataset_card()
+    print(f"Artifacts written to {ARTIFACT_DIR}")
 
-    print(f"\n--- SUCCESS! Artifacts generated in {ARTIFACT_DIR} ---")
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()
