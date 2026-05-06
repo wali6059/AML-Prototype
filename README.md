@@ -150,3 +150,5 @@ The TLC dictionaries state that `tip_amount` does not include cash tips. For tha
 ## Final modeling note
 
 The boosted tree hurdle baseline is the strongest point-prediction model on the final held-out 2025 split. The Transformer-MDN remains part of the final system because it contributes a distribution over positive tips, which powers uncertainty intervals and risk-aware zone ranking.
+
+The Hugging Face app's Model Lab also has a same-ride check. It runs the tree hurdle model and the Transformer-MDN on the same trip inputs, so the user can see the point prediction beside the deep model's lower and upper tip range.

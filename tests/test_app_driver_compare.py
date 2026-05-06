@@ -31,6 +31,29 @@ def test_map_table_can_show_multiple_boroughs():
     assert table["Borough"].nunique() > 1
 
 
+def test_model_lab_compares_tree_and_transformer_for_same_ride():
+    summary, table = app.compare_model_predictions(
+        "yellow",
+        "Midtown Center",
+        "JFK Airport",
+        18,
+        5,
+        5,
+        17.0,
+        72.0,
+        45.0,
+        "1",
+        "1",
+        "1",
+        "N",
+    )
+
+    assert "Transformer-MDN" in summary
+    assert set(table["Model"]) >= {"Boosted tree hurdle", "Transformer-MDN"}
+    deep = table[table["Model"] == "Transformer-MDN"].iloc[0]
+    assert deep["Downside tip"] <= deep["Upside tip"]
+
+
 def test_report_generator_uses_experiment_framing():
     text = Path("scripts/generate_latex_report.py").read_text(encoding="utf-8").lower()
 

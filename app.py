@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT_DIR / "src"))
 
 from tip_or_skip.driver_copilot import answer_driver_question, build_driver_context
 from tip_or_skip.fact_assistant import answer_question, build_fact_context, fact_cards_markdown
+from tip_or_skip.inference import load_deep_bundle, predict_row as predict_deep_row
 from tip_or_skip.shift_planner import rank_destinations
 
 TLC_ZONES_URL = (
@@ -109,6 +110,14 @@ def load_artifacts() -> dict:
         "green": joblib.load(ARTIFACT_DIR / "green_model_bundle.joblib"),
     }
     final_dir = ARTIFACT_DIR / "final"
+    deep_dir = final_dir / "transformer_mdn"
+    deep_bundle = None
+    deep_error = ""
+    if (deep_dir / "transformer_mdn.pt").exists() and (deep_dir / "feature_encoder.joblib").exists():
+        try:
+            deep_bundle = load_deep_bundle(deep_dir)
+        except Exception as exc:
+            deep_error = str(exc)
     packaged_report_dir = ARTIFACT_DIR / "final_report"
     report_dir = packaged_report_dir if packaged_report_dir.exists() else ROOT_DIR.parent / "report"
     final_metrics_path = report_dir / "final_metrics.csv"
@@ -131,6 +140,8 @@ def load_artifacts() -> dict:
         "dataset_notes": dataset_notes,
         "blog_background": blog_background,
         "models": models,
+        "deep_bundle": deep_bundle,
+        "deep_error": deep_error,
         "final_dir": final_dir,
         "report_dir": report_dir,
         "final_metrics": final_metrics,
@@ -304,19 +315,27 @@ def compare_ride_options(
             store_and_fwd_flag="N",
         )
         prediction = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
-        rows.append(
-            {
-                "Ride option": label,
-                "Pickup area": current_zone,
-                "Dropoff area": dropoff_zone,
-                "Tip probability": prediction["tip_probability"],
-                "Conditional tip": prediction["conditional_tip"],
-                "Expected tip": prediction["expected_tip"],
-                "Fare": fare,
-                "Distance": distance,
-                "Duration": duration,
-            }
-        )
+        row = {
+            "Ride option": label,
+            "Pickup area": current_zone,
+            "Dropoff area": dropoff_zone,
+            "Tip probability": prediction["tip_probability"],
+            "Conditional tip": prediction["conditional_tip"],
+            "Expected tip": prediction["expected_tip"],
+            "Fare": fare,
+            "Distance": distance,
+            "Duration": duration,
+        }
+        deep = _predict_transformer_mdn(feature_row)
+        if deep is not None:
+            row.update(
+                {
+                    "Transformer-MDN expected tip": deep["expected_tip"],
+                    "Downside tip": deep["q10_tip"],
+                    "Upside tip": deep["q90_tip"],
+                }
+            )
+        rows.append(row)
     table = pd.DataFrame(rows).sort_values("Expected tip", ascending=False).reset_index(drop=True)
     best = table.iloc[0]
     other = table.iloc[1]
@@ -329,6 +348,12 @@ def compare_ride_options(
         f"- Gap over the other option: **${gap:.2f}** expected tip\n\n"
         "This compares recorded electronic tips only, using the deployed two-stage trip prediction model."
     )
+    if "Transformer-MDN expected tip" in table.columns:
+        summary += (
+            "\n\n"
+            f"Transformer-MDN risk check for the selected ride: **${best['Downside tip']:.2f}** "
+            f"to **${best['Upside tip']:.2f}** for the positive-tip amount."
+        )
     return summary, table.round(4)
 
 
@@ -540,6 +565,7 @@ def _build_feature_row(
     dropoff_borough = d_borough_match.iloc[0] if not d_borough_match.empty else "Unknown"
 
     return {
+        "taxi_type": taxi_type,
         "pickup_hour": int(pickup_hour),
         "pickup_weekday": _weekday_to_int(pickup_weekday),
         "pickup_month": int(pickup_month),
@@ -555,6 +581,166 @@ def _build_feature_row(
         "dropoff_borough": dropoff_borough,
         "dropoff_zone": dropoff_zone,
     }
+
+
+def _zone_id(zone: str, pickup: bool) -> int:
+    samples = ARTIFACTS["sample_rows"]
+    zone_column = "pickup_zone" if pickup else "dropoff_zone"
+    id_column = "PULocationID" if pickup else "DOLocationID"
+    matches = samples.loc[samples[zone_column] == zone, id_column].dropna()
+    if matches.empty:
+        alt_zone_column = "dropoff_zone" if pickup else "pickup_zone"
+        alt_id_column = "DOLocationID" if pickup else "PULocationID"
+        matches = samples.loc[samples[alt_zone_column] == zone, alt_id_column].dropna()
+    return int(matches.iloc[0]) if not matches.empty else 0
+
+
+def _daypart(hour: int) -> str:
+    if 5 <= hour < 12:
+        return "morning"
+    if 12 <= hour < 17:
+        return "afternoon"
+    if 17 <= hour < 21:
+        return "evening"
+    return "night"
+
+
+def _service_zone(borough: str, zone: str) -> str:
+    if "Airport" in zone:
+        return "Airports"
+    if borough == "Manhattan":
+        return "Yellow Zone"
+    if borough in {"Bronx", "Brooklyn", "Queens", "Staten Island", "EWR"}:
+        return "Boro Zone"
+    return "Unknown"
+
+
+def _deep_feature_row(feature_row: dict) -> dict:
+    row = dict(feature_row)
+    pickup_weekday = int(row["pickup_weekday"])
+    pickup_hour = int(row["pickup_hour"])
+    row.update(
+        {
+            "pickup_year": 2025,
+            "is_weekend": int(pickup_weekday >= 5),
+            "daypart": _daypart(pickup_hour),
+            "extra": 0.0,
+            "mta_tax": 0.5,
+            "tolls_amount": 0.0,
+            "improvement_surcharge": 1.0,
+            "congestion_surcharge": 2.5 if row["pickup_borough"] == "Manhattan" else 0.0,
+            "airport_fee": 1.75 if "Airport" in row["dropoff_zone"] else 0.0,
+            "cbd_congestion_fee": 0.0,
+            "VendorID": int(row.get("vendor_id", 1)),
+            "PULocationID": _zone_id(row["pickup_zone"], pickup=True),
+            "DOLocationID": _zone_id(row["dropoff_zone"], pickup=False),
+            "pickup_service_zone": _service_zone(row["pickup_borough"], row["pickup_zone"]),
+            "dropoff_service_zone": _service_zone(row["dropoff_borough"], row["dropoff_zone"]),
+            "trip_type": "1",
+            "time_split": "test",
+            "tip_given": 0,
+            "tip_amount": 0.0,
+            "log_tip_amount": 0.0,
+        }
+    )
+    return row
+
+
+def _predict_transformer_mdn(feature_row: dict) -> dict | None:
+    deep_bundle = ARTIFACTS.get("deep_bundle")
+    if deep_bundle is None:
+        return None
+    model, encoder = deep_bundle
+    try:
+        return predict_deep_row(model, encoder, _deep_feature_row(feature_row))
+    except Exception:
+        return None
+
+
+def _same_ride_model_rows(taxi_type: str, feature_row: dict) -> list[dict]:
+    tree = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+    rows = [
+        {
+            "Model": "Boosted tree hurdle",
+            "Use in project": "Best point prediction",
+            "Tip probability": tree["tip_probability"],
+            "Conditional tip": tree["conditional_tip"],
+            "Expected tip": tree["expected_tip"],
+            "Downside tip": None,
+            "Median tip": None,
+            "Upside tip": None,
+        }
+    ]
+
+    deep = _predict_transformer_mdn(feature_row)
+    if deep is not None:
+        rows.append(
+            {
+                "Model": "Transformer-MDN",
+                "Use in project": "Uncertainty and risk range",
+                "Tip probability": deep["tip_probability"],
+                "Conditional tip": deep["conditional_tip_mean"],
+                "Expected tip": deep["expected_tip"],
+                "Downside tip": deep["q10_tip"],
+                "Median tip": deep["q50_tip"],
+                "Upside tip": deep["q90_tip"],
+            }
+        )
+    return rows
+
+
+def compare_model_predictions(
+    taxi_type: str,
+    pickup_zone: str,
+    dropoff_zone: str,
+    pickup_hour: int,
+    pickup_weekday: int,
+    pickup_month: int,
+    trip_distance: float,
+    fare_amount: float,
+    trip_duration_minutes: float,
+    vendor_id: str,
+    passenger_bucket: str,
+    ratecode: str,
+    store_and_fwd_flag: str,
+):
+    feature_row = _build_feature_row(
+        taxi_type=taxi_type,
+        pickup_zone=pickup_zone,
+        dropoff_zone=dropoff_zone,
+        pickup_hour=pickup_hour,
+        pickup_weekday=pickup_weekday,
+        pickup_month=pickup_month,
+        trip_distance=trip_distance,
+        fare_amount=fare_amount,
+        trip_duration_minutes=trip_duration_minutes,
+        vendor_id=vendor_id,
+        passenger_bucket=passenger_bucket,
+        ratecode=ratecode,
+        store_and_fwd_flag=store_and_fwd_flag,
+    )
+    table = pd.DataFrame(_same_ride_model_rows(taxi_type, feature_row))
+    tree = table[table["Model"] == "Boosted tree hurdle"].iloc[0]
+    summary = (
+        "### Same Ride Model Check\n"
+        f"The boosted tree hurdle model estimates an expected electronic tip of **${tree['Expected tip']:.2f}**. "
+        "This is the model used for the main point prediction because it had the lowest held-out expected-tip error."
+    )
+
+    deep = table[table["Model"] == "Transformer-MDN"]
+    if not deep.empty:
+        row = deep.iloc[0]
+        summary += (
+            "\n\n"
+            f"The Transformer-MDN estimates **${row['Expected tip']:.2f}** expected tip for the same ride. "
+            f"Its middle risk range runs from **${row['Downside tip']:.2f}** to **${row['Upside tip']:.2f}**. "
+            "This is useful when the driver cares about downside risk, not just the average."
+        )
+    else:
+        note = ARTIFACTS.get("deep_error") or "The saved deep model files were not found."
+        summary += f"\n\nTransformer-MDN comparison is not available in this run. {note}"
+
+    return summary, table.round(4)
 
 
 def run_prediction(
@@ -593,16 +779,31 @@ def run_prediction(
         f"Predicted tip amount if a tip happens: ${prediction['conditional_tip']:.2f}\n\n"
         f"Expected tip value for this ride: ${prediction['expected_tip']:.2f}"
     )
-    detail = pd.DataFrame(
-        [
-            {"metric": "Tip probability", "value": round(prediction["tip_probability"], 4)},
-            {
-                "metric": "Conditional tip amount",
-                "value": round(prediction["conditional_tip"], 2),
-            },
-            {"metric": "Expected tip amount", "value": round(prediction["expected_tip"], 2)},
-        ]
-    )
+    detail_rows = [
+        {"metric": "Tree tip probability", "value": round(prediction["tip_probability"], 4)},
+        {
+            "metric": "Tree conditional tip amount",
+            "value": round(prediction["conditional_tip"], 2),
+        },
+        {"metric": "Tree expected tip amount", "value": round(prediction["expected_tip"], 2)},
+    ]
+    deep = _predict_transformer_mdn(feature_row)
+    if deep is not None:
+        summary += (
+            "\n\n"
+            f"Transformer-MDN risk range if a tip happens: ${deep['q10_tip']:.2f} "
+            f"to ${deep['q90_tip']:.2f}"
+        )
+        detail_rows.extend(
+            [
+                {"metric": "Transformer-MDN tip probability", "value": round(deep["tip_probability"], 4)},
+                {"metric": "Transformer-MDN expected tip amount", "value": round(deep["expected_tip"], 2)},
+                {"metric": "Transformer-MDN downside tip", "value": round(deep["q10_tip"], 2)},
+                {"metric": "Transformer-MDN median tip", "value": round(deep["q50_tip"], 2)},
+                {"metric": "Transformer-MDN upside tip", "value": round(deep["q90_tip"], 2)},
+            ]
+        )
+    detail = pd.DataFrame(detail_rows)
     return summary, detail
 
 
@@ -787,6 +988,22 @@ INITIAL_MONTHLY_PLOT = plot_monthly_trends("yellow")
 INITIAL_HOURLY_PLOT = plot_hourly_trends("yellow")
 INITIAL_ZONE_TABLE = top_zones_table("yellow")
 INITIAL_MAP_HTML, INITIAL_MAP_TABLE = build_map_outputs("yellow", "All boroughs", "Tip Rate")
+INITIAL_MODEL_DROPOFF = "JFK Airport" if "JFK Airport" in ZONE_CHOICES else DEFAULT_DROPOFF
+INITIAL_MODEL_SUMMARY, INITIAL_MODEL_TABLE = compare_model_predictions(
+    "yellow",
+    DEFAULT_PICKUP,
+    INITIAL_MODEL_DROPOFF,
+    18,
+    5,
+    5,
+    17.0,
+    72.0,
+    45.0,
+    "1",
+    "1",
+    "1",
+    "N",
+)
 
 
 with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
@@ -1013,6 +1230,47 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
             model_plot = gr.Plot(value=plot_final_metric("Expected Tip MAE"), label="Metric chart")
         model_sort.change(model_comparison_table, inputs=model_sort, outputs=model_table)
         model_metric.change(plot_final_metric, inputs=model_metric, outputs=model_plot)
+
+        gr.Markdown("## Same Ride Model Check")
+        with gr.Row():
+            same_taxi = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
+            same_pickup = gr.Dropdown(ZONE_CHOICES, value=DEFAULT_PICKUP, label="Pickup zone")
+            same_dropoff = gr.Dropdown(ZONE_CHOICES, value=INITIAL_MODEL_DROPOFF, label="Dropoff zone")
+        with gr.Row():
+            same_hour = gr.Slider(0, 23, value=18, step=1, label="Pickup hour")
+            same_weekday = gr.Slider(0, 6, value=5, step=1, label="Pickup weekday")
+            same_month = gr.Slider(1, 12, value=5, step=1, label="Pickup month")
+        with gr.Row():
+            same_distance = gr.Number(value=17.0, label="Trip distance")
+            same_fare = gr.Number(value=72.0, label="Fare amount")
+            same_duration = gr.Number(value=45.0, label="Trip duration minutes")
+        with gr.Row():
+            same_vendor = gr.Dropdown(["1", "2"], value="1", label="Vendor")
+            same_passengers = gr.Dropdown(["1", "2", "3-4", "5+"], value="1", label="Passenger bucket")
+            same_ratecode = gr.Dropdown(["1", "2", "3", "4", "5", "6"], value="1", label="Ratecode")
+            same_store = gr.Dropdown(["N", "Y"], value="N", label="Store and forward")
+        same_button = gr.Button("Compare models")
+        same_summary = gr.Markdown(value=INITIAL_MODEL_SUMMARY)
+        same_table = gr.Dataframe(value=INITIAL_MODEL_TABLE, label="Same ride predictions", interactive=False)
+        same_button.click(
+            compare_model_predictions,
+            inputs=[
+                same_taxi,
+                same_pickup,
+                same_dropoff,
+                same_hour,
+                same_weekday,
+                same_month,
+                same_distance,
+                same_fare,
+                same_duration,
+                same_vendor,
+                same_passengers,
+                same_ratecode,
+                same_store,
+            ],
+            outputs=[same_summary, same_table],
+        )
 
         gr.Markdown("## Frozen Dataset Time Profile")
         with gr.Row():
