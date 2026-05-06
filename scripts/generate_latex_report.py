@@ -211,7 +211,7 @@ def _extra_tex(extra: dict[str, object]) -> str:
     if not copilot.empty:
         overall = copilot[copilot["check"] == "overall"]
         if not overall.empty:
-            copilot_text = f"The scripted driver-copilot evaluation reached an overall grounding score of {float(overall.iloc[0]['pass_rate']):.1%}."
+            copilot_text = f"The fixed prompt check reached an overall grounding score of {float(overall.iloc[0]['pass_rate']):.1%}."
     llm_text = "The driver LLM fine-tuning run was not generated."
     if llm:
         llm_text = (
@@ -259,19 +259,27 @@ Probability bin & Rows & Predicted & Actual & Gap \\
 
 The ablation shows which inputs matter most. Zone features, time features, fare fields, and distance fields are removed one group at a time. The change in error shows which groups the model depends on. The calibration curve checks if predicted tip probabilities match real tip rates. This matters because the demo ranks rides using these probabilities.
 
+The ablation plot shows that the error changes only a little when one feature group is removed. This means the signal is spread across several parts of the trip record. Fare and zone fields still matter, but no single feature group explains the whole problem. The calibration plot compares predicted probability to the real tip rate in each bin. Points close to the diagonal mean the probability is usable as a probability, not just as a ranking score.
+
 The graph experiment treats TLC zones as nodes. Pickup and dropoff traffic form the edges. Node features include pickup volume, dropoff volume, in degree, out degree, average tip, and tip rate from the training period. A small graph convolution model then predicts future zone level tip behavior. {graph_text}
 
 {fig_flow}
 {fig_graph}
 
-The sequence experiment groups rides by hour, taxi type, and pickup borough. A small LSTM reads the previous six hours and predicts the next hour's tip rate and average tip. {seq_text} This connects the project to the RNN and LSTM material from class. It also makes the shift planning part use time, not only zones.
+The zone flow plot shows which TLC zones carry the most pickup and dropoff traffic. These busy zones are important because they shape the graph edges and dominate many driver decisions. The graph prediction plot compares predicted zone tips with the observed 2025 zone averages. The graph model captures some spatial structure, but the simple year to year baseline is still very hard to beat. This is a useful result because it shows that stable zone history is already a strong signal.
+
+The sequence experiment groups rides by hour, taxi type, and pickup borough. A small LSTM reads the previous six hours and predicts the next hour's tip rate and average tip. {seq_text} It also makes the shift planning part use time, not only zones.
 
 {fig_lstm}
 {fig_seq}
 
-The driver copilot was checked with scripted ride choice questions. Each question had known zones and known values from the final zone risk table. The check looked for the right zone, the expected tip value, and the cash tip limitation. {copilot_text} The same zone risk table was also turned into instruction examples for a small driver LLM. {llm_text} The public demo keeps deterministic retrieval as the default because it is more stable.
+The LSTM training plot shows whether the sequence model learned steadily instead of only fitting noise. The current hour versus next hour plot shows how much short term signal exists in the hourly data. If the points follow a clear pattern, recent hours carry information about the next hour. If the points are scattered, the next hour is harder to predict from recent history alone.
+
+The driver copilot was checked with a fixed set of ride choice questions. This means the project used a small test set of prompts with known expected answers. Each prompt had known zones and known values from the final zone risk table. The check looked for the right zone, the expected tip value, and the cash tip limitation. It was a grounding check, not a human user study. {copilot_text} The same zone risk table was also turned into instruction examples for a small driver LLM. {llm_text} The public demo keeps deterministic retrieval as the default because it is more stable.
 
 {fig_copilot}
+
+The copilot plot reports the pass rate for the grounding checks. A high score means the copilot answer used the intended zone, included the expected number, and kept the cash tip caveat. This matters because the driver assistant should explain model results, not invent unsupported advice.
 """
 
 
@@ -323,15 +331,20 @@ def _extra_html(extra: dict[str, object]) -> str:
   {calibration_table_html}
   {_maybe_figure("ablation_expected_tip_mae.png", "Figure 4. Feature ablation results using expected-tip MAE.")}
   {_maybe_figure("calibration_curve.png", "Figure 5. Calibration curve for the selected hurdle model.")}
+  <p>The ablation plot shows that the error changes only a little when one feature group is removed. This means the signal is spread across several parts of the trip record. Fare and zone fields still matter, but no single feature group explains the whole problem. The calibration plot compares predicted probability to the real tip rate in each bin. Points close to the diagonal mean the probability is usable as a probability, not just as a ranking score.</p>
   <h3>Graph, Sequence, and Driver Copilot Checks</h3>
   {graph_table}
   {seq_table}
   {copilot_table}
   {llm_table}
   {_maybe_figure("zone_flow_graph_summary.png", "Figure 6. Busiest taxi-zone nodes in the held-out flow graph.")}
-  {_maybe_figure("sequence_lstm_training.png", "Figure 7. Sequence LSTM training and validation loss.")}
-  {_maybe_figure("graph_gcn_zone_prediction.png", "Figure 8. Graph model zone-tip predictions against 2025 observations.")}
-  {_maybe_figure("copilot_eval_summary.png", "Figure 9. Driver Copilot grounding check pass rates.")}
+  {_maybe_figure("graph_gcn_zone_prediction.png", "Figure 7. Graph model zone-tip predictions against 2025 observations.")}
+  <p>The zone flow plot shows which TLC zones carry the most pickup and dropoff traffic. These busy zones are important because they shape the graph edges and dominate many driver decisions. The graph prediction plot compares predicted zone tips with the observed 2025 zone averages. The graph model captures some spatial structure, but the simple year to year baseline is still very hard to beat.</p>
+  {_maybe_figure("sequence_lstm_training.png", "Figure 8. Sequence LSTM training and validation loss.")}
+  {_maybe_figure("sequence_shift_signal.png", "Figure 9. Current hour versus next hour signal.")}
+  <p>The LSTM training plot shows whether the sequence model learned steadily instead of only fitting noise. The current hour versus next hour plot shows how much short term signal exists in the hourly data. A clear pattern means recent hours carry information about the next hour. A scattered pattern means the next hour is harder to predict from recent history alone.</p>
+  {_maybe_figure("copilot_eval_summary.png", "Figure 10. Driver Copilot grounding check pass rates.")}
+  <p>The copilot plot reports the pass rate for fixed prompt checks. These were small test prompts with known zones and known values from the final zone risk table. The answer was checked for the right zone, the expected number, and the cash tip caveat. This was a grounding check, not a human user study.</p>
 </section>
 """
 
@@ -435,6 +448,8 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
   {_html_table(metrics_display)}
   <figure><img alt="Model comparison" src="data:image/png;base64,{model_img}"><figcaption>Figure 1. Model comparison across classification, calibration, conditional amount, and expected-tip metrics.</figcaption></figure>
   <figure><img alt="Monthly tip rate" src="data:image/png;base64,{monthly_img}"><figcaption>Figure 2. Recorded electronic tip rates over time for Yellow and Green taxi trips.</figcaption></figure>
+  <p>Figure 1 shows the main tradeoff in the project. The boosted tree hurdle model has the best expected tip MAE and very low calibration error. The Transformer MDN is worse on point error, but it is the only model in the table that gives interval coverage. That is why the tree model is the strongest predictor while the MDN is still useful for uncertainty.</p>
+  <p>Figure 2 shows that the recorded electronic tip rate stays high across months for both taxi types. The line is not perfectly flat, so month and taxi type still matter. The pattern also shows why the chronological split is useful. The model has to handle small shifts over time instead of only memorizing a random sample.</p>
   <p>The tree hurdle model gives the best point prediction. This is important because boosted trees are still very strong for tabular data. The Transformer MDN does not beat it on expected tip MAE.</p>
   <p>The deep model is still useful. It gives a distribution instead of one number. The demo uses that distribution for risk aware rankings and lower tail estimates.</p>
 </section>
@@ -446,6 +461,7 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
   {_html_table(subgroup_display)}
   {_html_table(zone_display)}
   <figure><img alt="Top zones" src="data:image/png;base64,{zone_img}"><figcaption>Figure 3. Top pickup zones by final model expected tip.</figcaption></figure>
+  <p>The zone table shows the highest expected tip pickup zones after filtering out very small zones. Airport zones such as JFK and LaGuardia appear near the top because those trips usually have larger fares and longer distances. The bar plot gives a closer look at high expected tip Manhattan pickup zones. The table also shows trip counts and lower tail values, which keeps the ranking from being read as a simple guarantee.</p>
 </section>
 
 <section>
@@ -606,6 +622,8 @@ The model comparison is also an ablation. The linear model tests simple feature 
 \caption{{Comparison across classification, calibration, conditional amount, and expected-tip metrics.}}
 \end{{figure}}
 
+Figure 1 shows the main tradeoff in the project. The boosted tree hurdle model has the best expected tip MAE and very low calibration error. The Transformer MDN is worse on point error, but it is the only model in the table that gives interval coverage. That is why the tree model is the strongest predictor while the MDN is still useful for uncertainty.
+
 The tree hurdle model is the best point predictor. It has the lowest expected tip MAE. This is a useful negative result for the deep model. The Tabular Transformer MDN does not beat a strong boosted tree baseline on this structured data.
 
 The deep model still changes the output. It gives a conditional distribution instead of one number. This lets the demo rank zones by lower tail risk and show interval coverage. For point prediction, the boosted tree is best. For uncertainty, the Transformer MDN adds useful information.
@@ -615,6 +633,8 @@ The deep model still changes the output. It gives a conditional distribution ins
 \includegraphics[width=\linewidth]{{figures/monthly_tip_rate.png}}
 \caption{{Recorded electronic tip rate by month for Yellow and Green taxi trips in the frozen dataset.}}
 \end{{figure}}
+
+Figure 2 shows that the recorded electronic tip rate stays high across months for both taxi types. The line is not perfectly flat, so month and taxi type still matter. The pattern also shows why the chronological split is useful. The model has to handle small shifts over time instead of only memorizing a random sample.
 
 {extra_tex}
 
@@ -653,6 +673,8 @@ Taxi & Borough & Zone & Rows & Expected tip & Q10 tip \\
 \includegraphics[width=0.9\linewidth]{{figures/top_zone_expected_tip.png}}
 \caption{{Top pickup zones by predicted expected tip from the final model.}}
 \end{{figure}}
+
+The zone table shows the highest expected tip pickup zones after filtering out very small zones. Airport zones such as JFK and LaGuardia appear near the top because those trips usually have larger fares and longer distances. The bar plot gives a closer look at high expected tip Manhattan pickup zones. The table also shows trip counts and lower tail values, which keeps the ranking from being read as a simple guarantee.
 
 \section{{Interactive Hugging Face Demo}}
 The Hugging Face Space is part of the final project. It is not only a visualization. It lets a reader inspect the model and the data.
@@ -729,6 +751,7 @@ The final project materials include this PDF, the offline \texttt{{index.html}} 
             "*.log",
             "*.out",
             "rendered_pages",
+            "rendered_pages_simple_check",
             "last_report_build_output.txt",
         ),
     )
