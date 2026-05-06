@@ -6,7 +6,7 @@ The main goal of this project is to model recorded electronic tips. This matters
 
 # Main Idea
 
-We do not model tip amount as one plain regression target. That would mix two different behaviors. First, a rider either leaves a recorded electronic tip or does not. Then, if there is a tip, the amount has to be modeled.
+Tip amount is not modeled as one plain regression target. That would mix two different behaviors. First, a rider either leaves a recorded electronic tip or does not. Then, if there is a tip, the amount has to be modeled.
 
 So the project uses a two stage model.
 
