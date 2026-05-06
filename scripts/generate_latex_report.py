@@ -228,7 +228,7 @@ def _extra_tex(extra: dict[str, object]) -> str:
     fig_copilot = _figure_tex("copilot_eval_summary.png", "0.62\\linewidth", "Driver Copilot grounding check pass rates.")
     return rf"""
 \section{{Model Checks Over Features, Time, Zones, and Language}}
-After the main model comparison, we checked how the model behaves. We looked at feature groups, probability calibration, zone flow, hourly history, and the driver language layer. These checks are part of the main experiment. They show whether the model is reliable, not just whether the average error is low.
+After the main model comparison, the next step was to check model behavior. The checks cover feature groups, probability calibration, zone flow, hourly history, and the driver language layer. They are part of the main experiment. They show whether the model is reliable, not just whether the average error is low.
 
 \begin{{table}}[H]
 \centering
@@ -257,7 +257,7 @@ Probability bin & Rows & Predicted & Actual & Gap \\
 {fig_ablation}
 {fig_calibration}
 
-The ablation shows which inputs matter most. We removed zone features, time features, fare fields, and distance fields one group at a time. The change in error shows which groups the model depends on. The calibration curve checks if predicted tip probabilities match real tip rates. This matters because the demo ranks rides using these probabilities.
+The ablation shows which inputs matter most. Zone features, time features, fare fields, and distance fields are removed one group at a time. The change in error shows which groups the model depends on. The calibration curve checks if predicted tip probabilities match real tip rates. This matters because the demo ranks rides using these probabilities.
 
 The graph experiment treats TLC zones as nodes. Pickup and dropoff traffic form the edges. Node features include pickup volume, dropoff volume, in degree, out degree, average tip, and tip rate from the training period. A small graph convolution model then predicts future zone level tip behavior. {graph_text}
 
@@ -269,7 +269,7 @@ The sequence experiment groups rides by hour, taxi type, and pickup borough. A s
 {fig_lstm}
 {fig_seq}
 
-The driver copilot was checked with scripted ride choice questions. Each question had known zones and known values from the final zone risk table. We checked if the answer named the right zone, gave the expected tip value, and mentioned the cash tip limitation. {copilot_text} We also turned the same zone risk table into instruction examples for a small driver LLM. {llm_text} The public demo keeps deterministic retrieval as the default because it is more stable.
+The driver copilot was checked with scripted ride choice questions. Each question had known zones and known values from the final zone risk table. The check looked for the right zone, the expected tip value, and the cash tip limitation. {copilot_text} The same zone risk table was also turned into instruction examples for a small driver LLM. {llm_text} The public demo keeps deterministic retrieval as the default because it is more stable.
 
 {fig_copilot}
 """
@@ -316,7 +316,7 @@ def _extra_html(extra: dict[str, object]) -> str:
     return f"""
 <section>
   <h2>Model Checks Over Features, Time, Zones, and Language</h2>
-  <p>After the main model comparison, we checked how the model behaves. We looked at feature groups, calibration, zone flow, hourly history, and the driver language layer. These checks are part of the main experiment. They show reliability, not only average error.</p>
+  <p>After the main model comparison, the next step was to check model behavior. The checks cover feature groups, calibration, zone flow, hourly history, and the driver language layer. They are part of the main experiment. They show reliability, not only average error.</p>
   <p>The feature ablation removes groups of inputs and retrains the same tree hurdle model. The calibration table compares predicted tip probabilities with real tip rates. The graph experiment builds a pickup and dropoff network over TLC zones. The LSTM experiment uses recent hourly history to predict the next hour. The language experiment checks if the driver assistant stays grounded in model numbers.</p>
   <h3>Feature Ablation and Calibration</h3>
   {ablation_table}
@@ -398,34 +398,34 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
 <section>
   <h2>Research Question</h2>
   <p>This project studies recorded electronic tips in NYC taxi trips. The main idea is that tipping should not be treated as one plain regression problem. A rider first either leaves a recorded electronic tip or does not. If there is a tip, the amount then has to be modeled.</p>
-  <p>We use a two stage setup for this reason. Stage 1 predicts the chance of a recorded tip. Stage 2 predicts the positive tip amount. We then compare simple models, boosted trees, and a Tabular Transformer MDN. The demo uses the model results to compare trips and zones.</p>
+  <p>A two stage setup fits this reason. Stage 1 predicts the chance of a recorded tip. Stage 2 predicts the positive tip amount. The project then compares simple models, boosted trees, and a Tabular Transformer MDN. The demo uses the model results to compare trips and zones.</p>
   <div class="callout">Best point model: <strong>{html.escape(str(best['model']))}</strong> with expected tip MAE <strong>${best['expected_tip_mae']:.2f}</strong>. The Transformer MDN does not win on point error. It is still useful because it gives uncertainty and lower risk estimates.</div>
 </section>
 
 <section>
   <h2>Related Work and Positioning</h2>
   <p>The method uses ideas from class. Hurdle models separate the chance of an event from the size of the positive outcome. This matches electronic tips because many trips have zero recorded tip and positive tips are skewed.</p>
-  <p>The deep model uses a Mixture Density Network. Instead of predicting one positive tip value, it predicts a small distribution. This gives means, medians, lower quantiles, and interval coverage. We also compare against boosted trees because they are strong tabular baselines.</p>
-  <p>The later experiments use the same tipping problem for other course topics. We check calibration, a graph model over taxi zones, an LSTM over hourly borough history, and a small driver language model.</p>
+  <p>The deep model uses a Mixture Density Network. Instead of predicting one positive tip value, it predicts a small distribution. This gives means, medians, lower quantiles, and interval coverage. Boosted trees are included because they are strong tabular baselines.</p>
+  <p>The later experiments use the same tipping problem for other course topics. These include calibration, a graph model over taxi zones, an LSTM over hourly borough history, and a small driver language model.</p>
 </section>
 
 <section>
   <h2>Dataset</h2>
-  <p>The dataset comes from official NYC TLC Yellow and Green taxi records for 2024 and 2025. We keep credit card trips because <code>tip_amount</code> records electronic tips. It does not include cash tips. Invalid fare, distance, duration, and date rows are removed.</p>
+  <p>The dataset comes from official NYC TLC Yellow and Green taxi records for 2024 and 2025. Credit card trips are kept because <code>tip_amount</code> records electronic tips. It does not include cash tips. Invalid fare, distance, duration, and date rows are removed.</p>
   <p>Pickup and dropoff locations are joined to TLC zone names and boroughs. This lets the model use both numeric location IDs and readable geography. The frozen package has <strong>{summary['rows']:,}</strong> rows, <strong>{summary['columns']}</strong> columns, and a recorded electronic tip rate of <strong>{summary['tip_rate']:.1%}</strong>.</p>
   <p>The split is based on time. Early 2024 is training data. Late 2024 is validation data. All of 2025 is the test set. This is more honest than a random split because the model has to work on a future year.</p>
-  <p>We also remove leakage. We do not use <code>total_amount</code> because it can include the tip. The model only gets trip context such as time, distance, duration, fare fields, taxi type, vendor, passenger bucket, rate code, and zones.</p>
+  <p>Leakage is also removed. The feature set does not include <code>total_amount</code> because it can contain the tip. The model only gets trip context such as time, distance, duration, fare fields, taxi type, vendor, passenger bucket, rate code, and zones.</p>
 </section>
 
 <section>
   <h2>ML Formulation</h2>
   <p>Each trip becomes one feature row. Stage 1 predicts if the trip gets a recorded electronic tip. Stage 2 predicts <code>log1p(tip_amount)</code> for trips with a positive tip.</p>
-  <p>The final expected tip is the tip probability times the predicted positive tip. We evaluate classification with ROC AUC, log loss, Brier score, calibration error, and F1. We evaluate amount prediction with log tip RMSE and expected tip MAE.</p>
+  <p>The final expected tip is the tip probability times the predicted positive tip. Classification is evaluated with ROC AUC, log loss, Brier score, calibration error, and F1. Amount prediction is evaluated with log tip RMSE and expected tip MAE.</p>
 </section>
 
 <section>
   <h2>Methods</h2>
-  <p>We compare three model families. The first is a logistic and ridge hurdle baseline. The second is a boosted tree hurdle model. The third is a Tabular Transformer with an MDN head.</p>
+  <p>Three model families are compared. The first is a logistic and ridge hurdle baseline. The second is a boosted tree hurdle model. The third is a Tabular Transformer with an MDN head.</p>
   <p>The MDN is the generative part of the project. It predicts a mixture distribution over positive log tips. This gives expected tips, medians, lower quantiles, and intervals.</p>
   <p>The model comparison is also an ablation. The linear model tests simple feature signal. The tree model tests nonlinear tabular patterns. The Transformer MDN tests whether deep embeddings and a distributional output add useful information.</p>
 </section>
@@ -459,7 +459,7 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
   <h2>Driver-Facing LLM Copilot</h2>
   <p>The final demo adds Driver Copilot. This is a driver facing language layer over the tipping model. A driver can ask about one area or compare two ride options.</p>
   <p>The copilot maps area names to TLC zones. It then looks up expected tip, downside Q10 tip, predicted tip probability, and observed trip count. The answer gives a recommendation with the numbers behind it.</p>
-  <p>We also made instruction examples from the zone risk table and trained a compact driver LLM. The public demo keeps retrieval grounded answers as the default because they are more stable. The LLM layer is an interface to the ML results, not a replacement for the model.</p>
+  <p>Instruction examples were also made from the zone risk table, then used to train a compact driver LLM. The public demo keeps retrieval grounded answers as the default because they are more stable. The LLM layer is an interface to the ML results, not a replacement for the model.</p>
 </section>
 
 <section>
@@ -531,13 +531,13 @@ def main() -> None:
 \maketitle
 
 \begin{{abstract}}
-This project studies recorded electronic tips in NYC taxi trips. We use official TLC Yellow and Green taxi records. The main idea is to model tipping in two stages. First we predict if a trip gets a recorded electronic tip. Then we predict the positive tip amount. We build a frozen 2024 and 2025 dataset with {summary["rows"]:,} cleaned credit card trips. We compare a logistic and ridge hurdle model, a boosted tree hurdle model, and a Tabular Transformer Mixture Density Network. The tree hurdle model is the best point predictor, with expected tip MAE of {_fmt(best["expected_tip_mae"], "money")}. The Transformer MDN adds uncertainty and lower tail estimates that are useful in the demo.
+This project studies recorded electronic tips in NYC taxi trips using official TLC Yellow and Green taxi records. The main idea is to model tipping in two stages. First, the model predicts if a trip gets a recorded electronic tip. Then it predicts the positive tip amount. The frozen 2024 and 2025 dataset has {summary["rows"]:,} cleaned credit card trips. The project compares a logistic and ridge hurdle model, a boosted tree hurdle model, and a Tabular Transformer Mixture Density Network. The tree hurdle model is the best point predictor, with expected tip MAE of {_fmt(best["expected_tip_mae"], "money")}. The Transformer MDN adds uncertainty and lower tail estimates that are useful in the demo.
 \end{{abstract}}
 
 \section{{Introduction}}
 Taxi tipping is a useful applied machine learning problem. The target is noisy. Many trips have no recorded electronic tip. Positive tips are also skewed. The result depends on time, fare, distance, taxi type, and pickup and dropoff area.
 
-A plain regression model is not a good fit for this setup. It mixes two different tasks. The first task is whether a recorded tip exists. The second task is how large the tip is when it exists. Our project uses a hurdle model to separate these tasks.
+A plain regression model is not a good fit for this setup. It mixes two different tasks. The first task is whether a recorded tip exists. The second task is how large the tip is when it exists. A hurdle model separates these tasks.
 
 The practical goal is a tool that a driver or analyst can inspect. The user can compare zones, run what if changes, view maps, and ask questions about the data. The research goal is to compare classical tabular models with a deep distributional model.
 
@@ -550,16 +550,16 @@ The second idea is strong tabular baselines. Boosted trees often do very well on
 
 The third idea is distributional prediction. A Mixture Density Network predicts a density instead of one mean value. In this project, the MDN predicts a mixture over positive log tips. This gives quantiles and intervals. These are useful for risk aware ride ranking.
 
-We also study calibration. A predicted probability should mean something. A model with good ranking can still have bad probabilities. So we report ROC AUC and also Brier score and expected calibration error.
+Calibration is also included. A predicted probability should mean something. A model with good ranking can still have bad probabilities. So the report includes ROC AUC along with Brier score and expected calibration error.
 
 \section{{Dataset and Preprocessing}}
-The dataset comes from official NYC TLC Yellow and Green taxi monthly parquet files for 2024 and 2025. We keep credit card trips only. This is because TLC \texttt{{tip\_amount}} records electronic tips and does not include cash tips. So the target is recorded electronic tipping, not total tipping.
+The dataset comes from official NYC TLC Yellow and Green taxi monthly parquet files for 2024 and 2025. Credit card trips are kept only. This is because TLC \texttt{{tip\_amount}} records electronic tips and does not include cash tips. So the target is recorded electronic tipping, not total tipping.
 
-Cleaning removes trips with nonpositive fare, distance, or duration. It also removes invalid pickup dates and inconsistent trip fields. We create features for year, month, hour, weekday, weekend, daypart, trip duration, passenger bucket, rate code, and store and forward flag. We join pickup and dropoff location IDs to TLC zone names and boroughs.
+Cleaning removes trips with nonpositive fare, distance, or duration. It also removes invalid pickup dates and inconsistent trip fields. The feature set includes year, month, hour, weekday, weekend, daypart, trip duration, passenger bucket, rate code, and store and forward flag. Pickup and dropoff location IDs are joined to TLC zone names and boroughs.
 
 The frozen dataset contains {summary["rows"]:,} rows and {summary["columns"]} columns. The overall recorded electronic tip rate is {summary["tip_rate"]:.1%}. The split is chronological. January to September 2024 is training data with {summary["split_counts"]["train"]:,} rows. October to December 2024 is validation data with {summary["split_counts"]["valid"]:,} rows. All of 2025 is test data with {summary["split_counts"]["test"]:,} rows.
 
-This split is important. A random split could make the task too easy because similar months could appear in train and test. Testing on 2025 is closer to using the model on future trips. We also remove leakage variables. We do not use \texttt{{total\_amount}} because it can contain the tip after the trip.
+This split is important. A random split could make the task too easy because similar months could appear in train and test. Testing on 2025 is closer to using the model on future trips. Leakage variables are also removed. The feature set does not use \texttt{{total\_amount}} because it can contain the tip after the trip.
 
 \section{{Machine Learning Formulation}}
 For a trip $i$ with features $x_i$, Stage 1 defines
@@ -576,11 +576,11 @@ For the MDN model, the conditional positive-tip density is
 \[
 p_\theta(z \mid y=1,x)=\sum_{{k=1}}^K \pi_k(x)\mathcal{{N}}(z;\mu_k(x),\sigma_k^2(x)).
 \]
-This formulation supports multiple summaries of the same trip: expected tip, median tip, lower-tail quantiles, and interval coverage. We evaluate classification with ROC-AUC, average precision, log loss, Brier score, expected calibration error, precision, recall, and F1. We evaluate conditional amount prediction with log-tip MAE/RMSE and evaluate full decision output with expected-tip MAE.
+This formulation supports multiple summaries of the same trip: expected tip, median tip, lower-tail quantiles, and interval coverage. Classification is evaluated with ROC-AUC, average precision, log loss, Brier score, expected calibration error, precision, recall, and F1. Conditional amount prediction is evaluated with log-tip MAE/RMSE. The full decision output is evaluated with expected-tip MAE.
 This setup matches the data better than one regression model. The expected tip is made by multiplying the predicted chance of a tip by the predicted positive tip. The MDN version also gives a distribution. That lets us study uncertainty and downside risk.
 
 \section{{Models and Ablations}}
-We compare three model families. The logistic and ridge baseline uses logistic regression for Stage 1 and ridge regression for Stage 2. It is the simplest model.
+Three model families are compared. The logistic and ridge baseline uses logistic regression for Stage 1 and ridge regression for Stage 2. It is the simplest model.
 
 The tree hurdle model uses histogram gradient boosted trees for both stages. It is the strongest classical tabular baseline. It can learn nonlinear patterns between fare, distance, time, and zones.
 
@@ -619,7 +619,7 @@ The deep model still changes the output. It gives a conditional distribution ins
 {extra_tex}
 
 \section{{Subgroup Behavior and Spatial Risk}}
-The dataset is not evenly spread across the city. Manhattan has many rows. Some other borough groups have fewer rows and noisier estimates. Because of this, aggregate metrics can hide differences. We compute subgroup metrics by taxi type and pickup borough.
+The dataset is not evenly spread across the city. Manhattan has many rows. Some other borough groups have fewer rows and noisier estimates. Because of this, aggregate metrics can hide differences. Subgroup metrics are computed by taxi type and pickup borough.
 
 This matters for the demo. A driver facing tool should not only show a ranked list. It should also show trip counts and uncertainty. Small sample zones can look better or worse than they really are.
 
@@ -668,7 +668,7 @@ The final interface includes Driver Copilot. This is a driver facing language la
 
 The copilot parses the prompt and maps area names to TLC zones. It then retrieves expected tip, downside $Q_{{0.10}}$ tip, tip probability, and observed test trip count. The answer gives a recommendation and shows the numbers behind it.
 
-The live demo uses retrieval grounded answers as the default. This is more stable because the evidence is structured and numeric. We also generated instruction tuning examples from the zone risk table and trained a compact driver LLM. The tuned model is evaluated for grounding, but the public Space keeps the deterministic layer available even without an inference token.
+The live demo uses retrieval grounded answers as the default. This is more stable because the evidence is structured and numeric. Instruction tuning examples were also generated from the zone risk table and used to train a compact driver LLM. The tuned model is evaluated for grounding, but the public Space keeps the deterministic layer available even without an inference token.
 
 This turns the ML results into a simple driver workflow. For one area, the copilot labels the area as strong, solid, or lower. For two areas, it recommends the one with higher expected electronic tip and reports the gap. The structured comparison form uses the deployed two stage model for two full ride options.
 
