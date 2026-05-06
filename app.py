@@ -15,8 +15,16 @@ import joblib
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+import torch  
 
-from prototype_pipeline import ARTIFACT_DIR, predict_tip
+
+from prototype_pipeline import (
+    ARTIFACT_DIR, 
+    predict_tip, 
+    TabularTransformerMDN,
+    MODEL_FEATURES
+)
 
 matplotlib.use("Agg")
 
@@ -79,24 +87,10 @@ def _load_zone_centroids() -> dict[str, tuple[float, float]]:
 
 
 def load_artifacts() -> dict:
+    """升级为 PyTorch 模型加载逻辑"""
     metrics = json.loads((ARTIFACT_DIR / "metrics.json").read_text(encoding="utf-8"))
-    packaged_summary_path = ARTIFACT_DIR / "final_report" / "build_summary.json"
-    summary_path = (
-        packaged_summary_path
-        if packaged_summary_path.exists()
-        else ROOT_DIR.parent / "final_dataset" / "build_summary.json"
-    )
-    final_summary = (
-        json.loads(summary_path.read_text(encoding="utf-8"))
-        if summary_path.exists()
-        else {
-            "rows": 0,
-            "columns": 0,
-            "tip_rate": 0.0,
-            "split_counts": {},
-            "taxi_type_counts": {},
-        }
-    )
+    
+    # 加载基础数据表
     monthly = pd.read_csv(ARTIFACT_DIR / "monthly_summary.csv")
     hourly = pd.read_csv(ARTIFACT_DIR / "hourly_summary.csv")
     zones = pd.read_csv(ARTIFACT_DIR / "zone_summary.csv")
@@ -104,22 +98,40 @@ def load_artifacts() -> dict:
     zone_options = pd.read_csv(ARTIFACT_DIR / "zone_options.csv")
     dataset_notes = (ARTIFACT_DIR / "dataset_notes.md").read_text(encoding="utf-8")
     blog_background = load_blog_background()
-    models = {
-        "yellow": joblib.load(ARTIFACT_DIR / "yellow_model_bundle.joblib"),
-        "green": joblib.load(ARTIFACT_DIR / "green_model_bundle.joblib"),
-    }
+
+    # --- 关键修改：从 PyTorch .pth 加载 Transformer-MDN 模型 ---
+    models = {}
+    for taxi_type in ["yellow", "green"]:
+        model_path = ARTIFACT_DIR / f"{taxi_type}_v2_model.pth"
+        if model_path.exists():
+            # 使用 weights_only=False 允许加载 preprocessor 对象
+            checkpoint = torch.load(model_path, map_location="cpu", weights_only=False)
+            
+            # 实例化架构
+            model = TabularTransformerMDN(
+                num_numeric=checkpoint["config"]["num_numeric"],
+                cat_cardinalities=checkpoint["config"]["cat_cardinalities"]
+            )
+            model.load_state_dict(checkpoint["model_state"])
+            model.eval()
+            
+            models[taxi_type] = {
+                "model": model,
+                "preprocessor": checkpoint["preprocessor"]
+            }
+        else:
+            print(f"Warning: Model for {taxi_type} not found at {model_path}")
+
+    # 加载实验报告相关（保持原有逻辑）
+    packaged_summary_path = ARTIFACT_DIR / "final_report" / "build_summary.json"
+    summary_path = packaged_summary_path if packaged_summary_path.exists() else ROOT_DIR.parent / "final_dataset" / "build_summary.json"
+    final_summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else {"rows": 0, "columns": 0, "tip_rate": 0.0, "split_counts": {}, "taxi_type_counts": {}}
+    
     final_dir = ARTIFACT_DIR / "final"
     packaged_report_dir = ARTIFACT_DIR / "final_report"
     report_dir = packaged_report_dir if packaged_report_dir.exists() else ROOT_DIR.parent / "report"
-    final_metrics_path = report_dir / "final_metrics.csv"
-    zone_risk_path = report_dir / "zone_risk_summary.csv"
-    subgroup_path = report_dir / "subgroup_metrics.csv"
-    monthly_profile_path = report_dir / "monthly_profile_for_report.csv"
     experiment_dir = ARTIFACT_DIR / "experiments"
-    final_metrics = _read_csv(final_metrics_path)
-    zone_risk = _read_csv(zone_risk_path)
-    subgroup_metrics = _read_csv(subgroup_path)
-    monthly_profile = _read_csv(monthly_profile_path)
+
     return {
         "metrics": metrics,
         "final_summary": final_summary,
@@ -133,10 +145,10 @@ def load_artifacts() -> dict:
         "models": models,
         "final_dir": final_dir,
         "report_dir": report_dir,
-        "final_metrics": final_metrics,
-        "zone_risk": zone_risk,
-        "subgroup_metrics": subgroup_metrics,
-        "monthly_profile": monthly_profile,
+        "final_metrics": _read_csv(report_dir / "final_metrics.csv"),
+        "zone_risk": _read_csv(report_dir / "zone_risk_summary.csv"),
+        "subgroup_metrics": _read_csv(report_dir / "subgroup_metrics.csv"),
+        "monthly_profile": _read_csv(report_dir / "monthly_profile_for_report.csv"),
         "experiment_dir": experiment_dir,
         "ablation_metrics": _read_csv(experiment_dir / "ablation_metrics.csv"),
         "calibration_bins": _read_csv(experiment_dir / "calibration_bins.csv"),
@@ -150,16 +162,8 @@ def load_artifacts() -> dict:
 
 
 ARTIFACTS = load_artifacts()
-FACT_CONTEXT = build_fact_context(
-    ARTIFACTS["final_summary"],
-    ARTIFACTS["final_metrics"],
-    ARTIFACTS["zone_risk"],
-    ARTIFACTS["subgroup_metrics"],
-)
-DRIVER_CONTEXT = build_driver_context(
-    ARTIFACTS["zone_risk"],
-    ARTIFACTS["zone_options"]["zone"].tolist(),
-)
+FACT_CONTEXT = build_fact_context(ARTIFACTS["final_summary"], ARTIFACTS["final_metrics"], ARTIFACTS["zone_risk"], ARTIFACTS["subgroup_metrics"])
+DRIVER_CONTEXT = build_driver_context(ARTIFACTS["zone_risk"], ARTIFACTS["zone_options"]["zone"].tolist())
 ZONE_CHOICES = ARTIFACTS["zone_options"]["zone"].tolist()
 DEFAULT_PICKUP = "Midtown Center"
 DEFAULT_DROPOFF = "Upper East Side North"
@@ -170,24 +174,20 @@ def _weekday_to_int(value: int | float | str) -> int:
     if isinstance(value, str):
         cleaned = value.strip()
         weekday_lookup = {name.lower(): idx for idx, name in enumerate(WEEKDAY_CHOICES)}
-        if cleaned.lower() in weekday_lookup:
-            return weekday_lookup[cleaned.lower()]
+        if cleaned.lower() in weekday_lookup: return weekday_lookup[cleaned.lower()]
         return int(cleaned)
     return int(value)
 
 
 def metrics_markdown() -> str:
-    blocks = ["## Baseline Results", ""]
+    blocks = ["## Transformer + MDN Prototype Results", ""]
     for taxi_type, values in ARTIFACTS["metrics"].items():
         blocks.append(f"### {taxi_type.title()} taxi")
-        blocks.append(f"- Test ROC-AUC: {values['roc_auc']:.3f}")
-        blocks.append(f"- Test F1 @ 0.50: {values['f1_at_0_5']:.3f}")
-        blocks.append(f"- Tip-rate in test split: {values['tip_rate_test']:.3f}")
-        blocks.append(f"- Conditional tip RMSE on log scale: {values['rmse_log_tip']:.3f}")
+        blocks.append(f"- Test ROC-AUC: {values.get('roc_auc', 0.0):.3f}")
+        blocks.append(f"- Tip-rate in test split: {values.get('tip_rate_test', 0.0):.3f}")
+        blocks.append(f"- Conditional tip RMSE (log): {values.get('rmse_log_tip', 0.0):.3f}")
         blocks.append("")
-    blocks.append(
-        "These models are trained on credit-card trips only because TLC `tip_amount` does not include cash tips."
-    )
+    blocks.append("Models utilize a self-attention backbone to capture spatiotemporal interactions.")
     return "\n".join(blocks)
 
 
@@ -267,68 +267,24 @@ def driver_copilot(message: str, history):
     return answer + "\n\n_Source: final model zone-risk table and TLC credit-card tip artifacts._"
 
 
-def compare_ride_options(
-    taxi_type: str,
-    current_zone: str,
-    option_a_zone: str,
-    option_b_zone: str,
-    pickup_hour: int,
-    pickup_weekday: int | str,
-    pickup_month: int,
-    option_a_distance: float,
-    option_a_fare: float,
-    option_a_duration: float,
-    option_b_distance: float,
-    option_b_fare: float,
-    option_b_duration: float,
-):
-    option_specs = [
-        ("Option A", option_a_zone, option_a_distance, option_a_fare, option_a_duration),
-        ("Option B", option_b_zone, option_b_distance, option_b_fare, option_b_duration),
+def compare_ride_options(*args):
+    (taxi_type, current_zone, option_a_zone, option_b_zone, pickup_hour, 
+     pickup_weekday, pickup_month, opt_a_dist, opt_a_fare, opt_a_dur, 
+     opt_b_dist, opt_b_fare, opt_b_dur) = args
+     
+    specs = [
+        ("Option A", option_a_zone, opt_a_dist, opt_a_fare, opt_a_dur),
+        ("Option B", option_b_zone, opt_b_dist, opt_b_fare, opt_b_dur),
     ]
     rows = []
-    for label, dropoff_zone, distance, fare, duration in option_specs:
-        feature_row = _build_feature_row(
-            taxi_type=taxi_type,
-            pickup_zone=current_zone,
-            dropoff_zone=dropoff_zone,
-            pickup_hour=pickup_hour,
-            pickup_weekday=_weekday_to_int(pickup_weekday),
-            pickup_month=pickup_month,
-            trip_distance=distance,
-            fare_amount=fare,
-            trip_duration_minutes=duration,
-            vendor_id="1",
-            passenger_bucket="1",
-            ratecode="1",
-            store_and_fwd_flag="N",
-        )
-        prediction = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
-        rows.append(
-            {
-                "Ride option": label,
-                "Pickup area": current_zone,
-                "Dropoff area": dropoff_zone,
-                "Tip probability": prediction["tip_probability"],
-                "Conditional tip": prediction["conditional_tip"],
-                "Expected tip": prediction["expected_tip"],
-                "Fare": fare,
-                "Distance": distance,
-                "Duration": duration,
-            }
-        )
+    for label, d_zone, dist, fare, dur in specs:
+        feat = _build_feature_row(taxi_type, current_zone, d_zone, pickup_hour, pickup_weekday, pickup_month, dist, fare, dur, "1", "1", "1", "N")
+        pred = predict_tip(ARTIFACTS["models"][taxi_type], feat)
+        rows.append({"Ride option": label, "Dropoff area": d_zone, "Tip probability": pred["tip_probability"], "Expected tip": pred["expected_tip"], "Fare": fare})
+    
     table = pd.DataFrame(rows).sort_values("Expected tip", ascending=False).reset_index(drop=True)
     best = table.iloc[0]
-    other = table.iloc[1]
-    gap = float(best["Expected tip"]) - float(other["Expected tip"])
-    summary = (
-        f"### Recommendation\n"
-        f"Choose **{best['Ride option']} to {best['Dropoff area']}** for the higher expected electronic tip.\n\n"
-        f"- Expected tip: **${best['Expected tip']:.2f}**\n"
-        f"- Tip probability: **{best['Tip probability']:.1%}**\n"
-        f"- Gap over the other option: **${gap:.2f}** expected tip\n\n"
-        "This compares recorded electronic tips only, using the deployed two-stage trip prediction model."
-    )
+    summary = f"### Recommendation\nChoose **{best['Ride option']} to {best['Dropoff area']}**.\n- Expected tip: **${best['Expected tip']:.2f}**\n- Tip probability: **{best['Tip probability']:.1%}**"
     return summary, table.round(4)
 
 
@@ -515,29 +471,18 @@ def run_sensitivity(
 
 
 def _build_feature_row(
-    taxi_type: str,
-    pickup_zone: str,
-    dropoff_zone: str,
-    pickup_hour: int,
-    pickup_weekday: int,
-    pickup_month: int,
-    trip_distance: float,
-    fare_amount: float,
-    trip_duration_minutes: float,
-    vendor_id: str,
-    passenger_bucket: str,
-    ratecode: str,
-    store_and_fwd_flag: str,
+    taxi_type: str, pickup_zone: str, dropoff_zone: str, pickup_hour: int,
+    pickup_weekday: int, pickup_month: int, trip_distance: float,
+    fare_amount: float, trip_duration_minutes: float, vendor_id: str,
+    passenger_bucket: str, ratecode: str, store_and_fwd_flag: str,
 ) -> dict:
-    lookup = ARTIFACTS["zone_options"].rename(
-        columns={"zone": "pickup_zone", "borough": "pickup_borough"}
-    )
-
-    p_borough_match = lookup.loc[lookup["pickup_zone"] == pickup_zone, "pickup_borough"]
-    pickup_borough = p_borough_match.iloc[0] if not p_borough_match.empty else "Unknown"
-
-    d_borough_match = lookup.loc[lookup["pickup_zone"] == dropoff_zone, "pickup_borough"]
-    dropoff_borough = d_borough_match.iloc[0] if not d_borough_match.empty else "Unknown"
+    lookup = ARTIFACTS["zone_options"] 
+    
+    p_match = lookup[lookup["zone"] == pickup_zone]
+    pickup_borough = p_match["borough"].iloc[0] if not p_match.empty else "Unknown"
+    
+    d_match = lookup[lookup["zone"] == dropoff_zone]
+    dropoff_borough = d_match["borough"].iloc[0] if not d_match.empty else "Unknown"
 
     return {
         "pickup_hour": int(pickup_hour),
@@ -557,52 +502,29 @@ def _build_feature_row(
     }
 
 
-def run_prediction(
-    taxi_type: str,
-    pickup_zone: str,
-    dropoff_zone: str,
-    pickup_hour: int,
-    pickup_weekday: int,
-    pickup_month: int,
-    trip_distance: float,
-    fare_amount: float,
-    trip_duration_minutes: float,
-    vendor_id: str,
-    passenger_bucket: str,
-    ratecode: str,
-    store_and_fwd_flag: str,
-):
+def run_prediction(*args):
+    (taxi_type, pickup_zone, dropoff_zone, pickup_hour, pickup_weekday, 
+     pickup_month, trip_distance, fare_amount, trip_duration_minutes, 
+     vendor_id, passenger_bucket, ratecode, store_and_fwd_flag) = args
+     
     feature_row = _build_feature_row(
-        taxi_type=taxi_type,
-        pickup_zone=pickup_zone,
-        dropoff_zone=dropoff_zone,
-        pickup_hour=pickup_hour,
-        pickup_weekday=pickup_weekday,
-        pickup_month=pickup_month,
-        trip_distance=trip_distance,
-        fare_amount=fare_amount,
-        trip_duration_minutes=trip_duration_minutes,
-        vendor_id=vendor_id,
-        passenger_bucket=passenger_bucket,
-        ratecode=ratecode,
-        store_and_fwd_flag=store_and_fwd_flag,
+        taxi_type, pickup_zone, dropoff_zone, pickup_hour, pickup_weekday,
+        pickup_month, trip_distance, fare_amount, trip_duration_minutes,
+        vendor_id, passenger_bucket, ratecode, store_and_fwd_flag
     )
+    
     prediction = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+    
     summary = (
-        f"Estimated chance of a recorded electronic tip: {prediction['tip_probability']:.1%}\n\n"
-        f"Predicted tip amount if a tip happens: ${prediction['conditional_tip']:.2f}\n\n"
-        f"Expected tip value for this ride: ${prediction['expected_tip']:.2f}"
+        f"Estimated chance of a tip: {prediction['tip_probability']:.1%}\n\n"
+        f"Predicted mean conditional amount: ${prediction['conditional_tip']:.2f}\n\n"
+        f"Expected tip value: ${prediction['expected_tip']:.2f}"
     )
-    detail = pd.DataFrame(
-        [
-            {"metric": "Tip probability", "value": round(prediction["tip_probability"], 4)},
-            {
-                "metric": "Conditional tip amount",
-                "value": round(prediction["conditional_tip"], 2),
-            },
-            {"metric": "Expected tip amount", "value": round(prediction["expected_tip"], 2)},
-        ]
-    )
+    detail = pd.DataFrame([
+        {"metric": "Tip probability", "value": round(prediction["tip_probability"], 4)},
+        {"metric": "Conditional amount ($)", "value": round(prediction["conditional_tip"], 2)},
+        {"metric": "Expected value ($)", "value": round(prediction["expected_tip"], 2)},
+    ])
     return summary, detail
 
 
@@ -610,12 +532,9 @@ def plot_monthly_trends(taxi_type: str):
     df = ARTIFACTS["monthly"]
     subset = df[df["taxi_type"] == taxi_type].sort_values("pickup_month")
     fig, ax1 = plt.subplots(figsize=(8, 4.5))
-    ax1.plot(subset["pickup_month"], subset["tip_rate"], marker="o", linewidth=2, color="#0b6e4f")
-    ax1.set_title(f"{taxi_type.title()} Taxi: Sampled Monthly Tip Rate")
-    ax1.set_xlabel("Month of 2025")
-    ax1.set_ylabel("Tip rate")
-    ax1.set_ylim(0, 1)
-    ax1.grid(alpha=0.2)
+    ax1.plot(subset["pickup_month"], subset["tip_rate"], marker="o", color="#0b6e4f")
+    ax1.set_title(f"{taxi_type.title()} Taxi: Monthly Tip Rate")
+    ax1.set_ylim(0, 1); ax1.grid(alpha=0.2)
     return fig
 
 
@@ -889,6 +808,7 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
         gr.Markdown(
             "Use the form below to estimate tip behavior for a hypothetical **credit-card** trip. "
             "The model predicts recorded electronic tips only."
+            "Estimate tip behavior using Transformer + MDN."
         )
         with gr.Row():
             taxi_type = gr.Dropdown(["yellow", "green"], value="yellow", label="Taxi type")
