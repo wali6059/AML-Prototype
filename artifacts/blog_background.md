@@ -37,6 +37,8 @@ The tree model gives the best point predictions. The Transformer MDN is still us
 
 The Hugging Face demo lets a user inspect the model. A user can enter a trip and get the tip probability, the expected positive tip, and the final expected tip.
 
+The Model Lab also compares the tree hurdle model and the Transformer MDN on the same ride. This shows the average prediction beside a lower and upper tip range.
+
 The app also has a what if panel. It shows how predictions change when hour, fare, distance, or duration changes. There are maps and tables for borough and zone patterns.
 
 The Driver Copilot is the language layer. A driver can ask about a pickup area or compare two ride options. The copilot looks up model results and gives a grounded answer. It does not just make up advice. It uses expected tip, tip probability, downside risk, and trip counts from the project artifacts.

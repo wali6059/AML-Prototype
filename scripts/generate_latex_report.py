@@ -468,6 +468,7 @@ def _write_index_html(summary: dict, metrics: pd.DataFrame, subgroup: pd.DataFra
   <h2>Interactive Demo</h2>
   <p>The Hugging Face demo turns the trained files into an interactive ML system. A user can ask about the dataset, model behavior, top zones, uncertainty, and limits. A user can also enter a trip, run what if sweeps, inspect metrics, compare subgroups, view maps, and rank zones.</p>
   <p>The assistant is grounded in project artifacts. It uses the dataset summary, metrics, subgroup table, and zone risk table. If a Hugging Face model token is available, the app can rewrite the answer with a hosted language model. The facts still come from the project files.</p>
+  <p>The Model Lab now has a same ride check. It runs the boosted tree hurdle model and the Transformer MDN on the same trip inputs. This shows the point prediction beside the deep model lower and upper tip range.</p>
   <p>The demo is meant to be inspected like a model audit. Start with the assistant. Then use the prediction form and the sensitivity panel. Then compare the model lab, experiment lab, maps, and shift planner.</p>
 </section>
 
@@ -681,9 +682,9 @@ The Hugging Face Space is part of the final project. It is not only a visualizat
 
 The demo has a grounded tipping facts assistant. It answers using the frozen dataset summary, final metrics, subgroup table, and zone risk table. If a Hugging Face model token is set, the app can rewrite answers with a hosted language model. The facts still come from the project files.
 
-The demo also has a prediction form, a what if sensitivity panel, model comparison controls, monthly profiles, subgroup metrics, maps, and a shift planner. The shift planner can rank zones by expected tip, downside $Q_{{0.10}}$ tip, or tip probability. This makes the model behavior visible.
+The demo also has a prediction form, a what if sensitivity panel, model comparison controls, monthly profiles, subgroup metrics, maps, and a shift planner. The Model Lab includes a same ride check. It runs the boosted tree hurdle model and the Transformer MDN on the same trip inputs. This puts the point prediction beside the deep model lower and upper tip range. The shift planner can rank zones by expected tip, downside $Q_{{0.10}}$ tip, or tip probability. This makes the model behavior visible.
 
-A good way to inspect the demo is simple. First ask the assistant what data was used. Then compare the model metrics. Then create a trip and run a sensitivity sweep. Finally compare zone rankings under different objectives.
+A good way to inspect the demo is simple. First ask the assistant what data was used. Then compare the model metrics. Then run the same ride model check. Then create a trip and run a sensitivity sweep. Finally compare zone rankings under different objectives.
 
 \section{{Driver-Facing LLM Copilot}}
 The final interface includes Driver Copilot. This is a driver facing language layer over the tipping model. A driver can ask about one area or compare two ride options. For example, the driver can ask about Midtown, JFK, or LaGuardia.
