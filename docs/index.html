@@ -227,7 +227,7 @@
           outputs from <code>artifacts/</code>, including the final boosted tree
           hurdle model, Transformer-MDN files, report tables, zone risk tables,
           calibration bins, ablation results, sequence metrics, graph metrics,
-          and driver LLM evaluation files.
+          Transformer ablation results, and driver LLM evaluation files.
         </p>
         <p>
           The app is organized around the main ways someone would inspect the
@@ -296,6 +296,15 @@
           expected-tip MAE around $2.34, but it is useful because it gives a
           range of possible positive tip amounts for the same ride. That matters
           when a driver cares about downside risk, not just the average.
+        </p>
+        <p>
+          We also ran feature ablations for the Transformer-MDN. For this test,
+          we trained a new Transformer for each feature group. We did not remove
+          columns from the saved full Transformer because that would change the
+          input shape. The full model had expected-tip MAE around $2.37. Removing
+          distance features hurt the most, with MAE around $2.50. The other
+          feature removals stayed close to the full model. This means the
+          Transformer was most sensitive to distance in this run.
         </p>
         <p>
           We also tested whether the project could go beyond scoring one ride
@@ -406,6 +415,18 @@
             This compares the main models side by side. The boosted tree wins
             for expected-tip MAE and calibration, while the Transformer-MDN adds
             an uncertainty range for the tip amount.
+          </figcaption>
+        </figure>
+
+        <figure>
+          <img
+            src="figures/transformer_ablation_expected_tip_mae.png"
+            alt="Transformer MDN feature ablation expected tip MAE"
+          />
+          <figcaption>
+            This shows the Transformer-MDN ablation run. Lower bars are better.
+            Removing distance made the error much higher. The other feature
+            groups were close to the full model.
           </figcaption>
         </figure>
 

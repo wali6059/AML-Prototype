@@ -19,6 +19,9 @@ artifacts/final/transformer_mdn/*
 !artifacts/final/transformer_mdn/transformer_mdn.pt
 !artifacts/final/transformer_mdn/feature_encoder.joblib
 artifacts/final_report/
+artifacts/runs/transformer_ablation_full/*/
+artifacts/runs/transformer_ablation_full/run.log
+artifacts/runs/transformer_ablation_full/transformer_ablation_expected_tip_mae.png
 submission/
 local_server_logs/
 pipeline_logs/
