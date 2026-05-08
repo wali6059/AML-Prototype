@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from prototype_pipeline import (
+from pipeline import (
     ARTIFACT_DIR,
     ROOT_DIR,
     RAW_DATA_DIR,

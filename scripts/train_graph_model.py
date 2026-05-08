@@ -20,7 +20,7 @@ from tip_or_skip.config import ARTIFACT_DIR, FIGURE_DIR, ensure_directories
 from tip_or_skip.data import load_dataset
 from tip_or_skip.extra import flow_features
 
-EXPERIMENT_DIR = ARTIFACT_DIR / "experiments"
+EXPERIMENT_DIR = ARTIFACT_DIR / "runs"
 
 
 class Gcn(nn.Module):

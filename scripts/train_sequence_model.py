@@ -20,7 +20,7 @@ matplotlib.use("Agg")
 from tip_or_skip.config import ARTIFACT_DIR, FIGURE_DIR, ensure_directories
 from tip_or_skip.data import load_dataset
 
-EXPERIMENT_DIR = ARTIFACT_DIR / "experiments"
+EXPERIMENT_DIR = ARTIFACT_DIR / "runs"
 
 
 class TipLSTM(nn.Module):

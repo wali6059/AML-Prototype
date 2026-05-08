@@ -8,5 +8,5 @@
   "final_eval_loss": 0.3033788738579586,
   "eval_perplexity": 1.3544275244251478,
   "zone_mention_rate": 1.0,
-  "output_dir": "/home/ubuntu/aml_project/Prototype/hf_space/artifacts/experiments/driver_llm"
+  "output_dir": "/home/ubuntu/aml_project/Prototype/hf_space/artifacts/runs/driver_llm"
 }

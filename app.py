@@ -16,11 +16,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from prototype_pipeline import ARTIFACT_DIR, predict_tip
+from pipeline import ARTIFACT_DIR, predict_tip
 
 matplotlib.use("Agg")
 
 ROOT_DIR = Path(__file__).resolve().parent
+DOCS_DIR = ROOT_DIR / "docs"
+REPORT_DATA_DIR = ARTIFACT_DIR / "report_data"
 sys.path.insert(0, str(ROOT_DIR / "src"))
 
 from tip_or_skip.driver_copilot import answer_driver_question, build_driver_context
@@ -81,15 +83,15 @@ def _load_zone_centroids() -> dict[str, tuple[float, float]]:
 
 def load_artifacts() -> dict:
     metrics = json.loads((ARTIFACT_DIR / "metrics.json").read_text(encoding="utf-8"))
-    packaged_summary_path = ARTIFACT_DIR / "final_report" / "build_summary.json"
-    summary_path = (
-        packaged_summary_path
-        if packaged_summary_path.exists()
-        else ROOT_DIR.parent / "final_dataset" / "build_summary.json"
-    )
+    local_report_dir = ROOT_DIR.parent / "report"
+    summary_candidates = [
+        REPORT_DATA_DIR / "build_summary.json",
+        ROOT_DIR.parent / "final_dataset" / "build_summary.json",
+    ]
+    summary_path = next((path for path in summary_candidates if path.exists()), None)
     final_summary = (
         json.loads(summary_path.read_text(encoding="utf-8"))
-        if summary_path.exists()
+        if summary_path is not None
         else {
             "rows": 0,
             "columns": 0,
@@ -118,13 +120,16 @@ def load_artifacts() -> dict:
             deep_bundle = load_deep_bundle(deep_dir)
         except Exception as exc:
             deep_error = str(exc)
-    packaged_report_dir = ARTIFACT_DIR / "final_report"
-    report_dir = packaged_report_dir if packaged_report_dir.exists() else ROOT_DIR.parent / "report"
-    final_metrics_path = report_dir / "final_metrics.csv"
-    zone_risk_path = report_dir / "zone_risk_summary.csv"
-    subgroup_path = report_dir / "subgroup_metrics.csv"
-    monthly_profile_path = report_dir / "monthly_profile_for_report.csv"
-    experiment_dir = ARTIFACT_DIR / "experiments"
+    report_data_dir = next(
+        (path for path in (REPORT_DATA_DIR, local_report_dir) if path.exists()),
+        REPORT_DATA_DIR,
+    )
+    report_dir = DOCS_DIR if DOCS_DIR.exists() else report_data_dir
+    final_metrics_path = report_data_dir / "final_metrics.csv"
+    zone_risk_path = report_data_dir / "zone_risk_summary.csv"
+    subgroup_path = report_data_dir / "subgroup_metrics.csv"
+    monthly_profile_path = report_data_dir / "monthly_profile_for_report.csv"
+    experiment_dir = ARTIFACT_DIR / "runs"
     final_metrics = _read_csv(final_metrics_path)
     zone_risk = _read_csv(zone_risk_path)
     subgroup_metrics = _read_csv(subgroup_path)
@@ -463,7 +468,7 @@ def experiment_markdown() -> str:
             f"eval perplexity **{llm.get('eval_perplexity', 0):.2f}**, zone mention rate **{llm.get('zone_mention_rate', 0):.0%}**."
         )
     if len(blocks) == 2:
-        blocks.append("Run `python scripts/run_extra_analysis.py`, `python scripts/train_sequence_model.py`, and `python scripts/train_graph_model.py` to generate these artifacts.")
+        blocks.append("Run `python scripts/model_analysis.py`, `python scripts/train_sequence_model.py`, and `python scripts/train_graph_model.py` to generate these artifacts.")
     return "\n\n".join(blocks)
 
 
@@ -1400,9 +1405,6 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
         if report_html.exists():
             gr.File(value=str(report_html), label="Offline technical blog index.html")
             gr.HTML(value=report_html.read_text(encoding="utf-8"))
-        report_pdf = ARTIFACTS["report_dir"] / "Tip_or_Skip_Final_Report.pdf"
-        if report_pdf.exists():
-            gr.File(value=str(report_pdf), label="Final report PDF")
         figure_paths = [
             ARTIFACTS["report_dir"] / "figures" / "model_comparison.png",
             ARTIFACTS["report_dir"] / "figures" / "monthly_tip_rate.png",

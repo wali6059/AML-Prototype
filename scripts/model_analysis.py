@@ -21,7 +21,7 @@ from tip_or_skip.driver_copilot import answer_driver_question, build_driver_cont
 from tip_or_skip.extra import ablation_columns, calibration_table, flow_features, llm_examples, score_answers, sequence_rows, write_jsonl
 from tip_or_skip.metrics import classification_summary, regression_summary
 
-EXPERIMENT_DIR = ARTIFACT_DIR / "experiments"
+EXPERIMENT_DIR = ARTIFACT_DIR / "runs"
 
 
 def _xy(train: pd.DataFrame, test: pd.DataFrame, cols: list[str]) -> tuple[np.ndarray, np.ndarray]:

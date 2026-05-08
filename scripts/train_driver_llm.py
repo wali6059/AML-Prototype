@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from tip_or_skip.config import ARTIFACT_DIR, ensure_directories
 
-EXPERIMENT_DIR = ARTIFACT_DIR / "experiments"
+EXPERIMENT_DIR = ARTIFACT_DIR / "runs"
 
 
 class ChatRows(Dataset):

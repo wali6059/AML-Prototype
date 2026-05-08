@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import subprocess
 import sys
 import zipfile
@@ -52,7 +51,7 @@ def main() -> None:
         run(
             [
                 sys.executable,
-                "scripts/run_extra_analysis.py",
+                "scripts/model_analysis.py",
                 "--sample-train",
                 str(args.extra_train_sample),
                 "--sample-test",
@@ -63,13 +62,15 @@ def main() -> None:
         run([sys.executable, "scripts/train_graph_model.py", "--epochs", str(args.graph_epochs)])
         if args.train_driver_llm:
             run([sys.executable, "scripts/train_driver_llm.py"])
-    run([sys.executable, "scripts/generate_latex_report.py"])
 
     package = SUBMISSION_DIR / "tip_or_skip_completion_outputs.zip"
     if package.exists():
         package.unlink()
+    package_roots = [FINAL_ARTIFACT_DIR, REPORT_DIR, ROOT / "docs"]
     with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
-        for root in [FINAL_ARTIFACT_DIR, REPORT_DIR]:
+        for root in package_roots:
+            if not root.exists():
+                continue
             for path in root.rglob("*"):
                 if path.is_file():
                     zf.write(path, arcname=str(path.relative_to(root.parent)))
@@ -77,7 +78,8 @@ def main() -> None:
     readme.write_text(
         "Tip or Skip final completion package.\n\n"
         f"Artifacts: {FINAL_ARTIFACT_DIR}\n"
-        f"Report: {REPORT_DIR}\n"
+        f"Report data: {REPORT_DIR}\n"
+        f"Blog: {ROOT / 'docs' / 'index.html'}\n"
         f"Zip: {package}\n",
         encoding="utf-8",
     )

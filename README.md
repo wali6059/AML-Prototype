@@ -16,7 +16,7 @@ pinned: false
 ## Repository Contents
 
 - `app.py`: Gradio application used in the Hugging Face Space.
-- `prototype_pipeline.py`: data loading, feature engineering, model training, artifact creation, and inference utilities.
+- `pipeline.py`: data loading, feature engineering, model training, artifact creation, and inference utilities.
 - `build_artifacts.py`: offline build script that samples the raw TLC files, trains baseline models, and writes runtime artifacts.
 - `blog_background.md`: project background text used in the Space blog tab and the GitHub Pages site.
 - `artifacts/`: deployable files used at runtime by the Space, including trained model bundles and summary tables.
@@ -33,7 +33,7 @@ This repository contains a compact end-to-end prototype built around the 2025 NY
 
 ## Data Preprocessing
 
-The preprocessing logic is implemented in `prototype_pipeline.py`.
+The preprocessing logic is implemented in `pipeline.py`.
 
 1. The pipeline reads all 12 monthly parquet files for yellow taxis and all 12 monthly parquet files for green taxis.
 2. It keeps only the columns needed for the prototype, including trip times, locations, fare values, payment type, and `tip_amount`.
@@ -96,36 +96,28 @@ python build_artifacts.py
 python app.py
 ```
 
-## Final project report outputs
+## Final project blog outputs
 
-The final report generator writes both a paper-style PDF and an offline HTML blog:
-
-```bash
-python scripts/generate_latex_report.py
-```
+The printable CourseWorks blog is checked in at `docs/index.html` with plots in `docs/figures/`.
+Use the browser print dialog to save it as a PDF when needed.
 
 The model diagnostics and sequence/graph/language experiment artifacts are generated with:
 
 ```bash
-python scripts/run_extra_analysis.py --sample-train 180000 --sample-test 120000
+python scripts/model_analysis.py --sample-train 180000 --sample-test 120000
 python scripts/train_sequence_model.py --epochs 45 --batch-size 1024
 python scripts/train_graph_model.py --epochs 500
 python scripts/train_driver_llm.py --model Qwen/Qwen2.5-0.5B-Instruct --epochs 3 --batch-size 1 --lr 1e-4 --max-length 384 --lora
-python scripts/generate_latex_report.py
-python scripts/package_submission.py
 ```
 
 Important outputs:
 
-- `../report/Tip_or_Skip_Final_Report.pdf`
-- `../report/Tip_or_Skip_Final_Report.tex`
-- `../report/index.html`
-- `artifacts/final_report/`
-- `artifacts/experiments/`
-- `../submission/tip_or_skip_courseworks_blog.zip`
+- `docs/index.html`
+- `docs/figures/`
+- `artifacts/report_data/`
+- `artifacts/runs/`
 
-The CourseWorks guideline requires a local `index.html`; the generated `../report/index.html` is self-contained and embeds the report figures directly.
-The CourseWorks zip contains the blog `index.html`, figures, PDF report, and a README with the GitHub and Hugging Face links.
+The CourseWorks guideline requires a local `index.html`; the checked-in `docs/index.html` references the checked-in figures and can be printed from the browser.
 
 ## Deploying to Hugging Face
 
