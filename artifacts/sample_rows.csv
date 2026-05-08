@@ -13,7 +13,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 21,1,11,0.79,6.5,4.633333333333334,2,1,1,N,Manhattan,Garment District,Manhattan,Penn Station/Madison Sq West,yellow,test,100,186,2.45,1,1.2383742310432684
 14,2,4,2.96,23.3,25.2,2,1,1,N,Manhattan,Midtown East,Manhattan,Upper West Side South,yellow,train,162,239,5.61,1,1.888583653863595
 0,6,11,1.7,11.4,9.933333333333334,1,1,1,N,Manhattan,East Village,Manhattan,UN/Turtle Bay South,yellow,test,79,233,1.0,1,0.6931471805599453
-19,2,5,1.02,8.6,7.216666666666667,2,1,1,N,Manhattan,Manhattan Valley,Manhattan,Upper West Side North,yellow,train,151,238,3.77,1,1.5623463049002497
+19,2,5,1.02,8.6,7.216666666666667,2,1,1,N,Manhattan,Manhattan Valley,Manhattan,Upper West Side North,yellow,train,151,238,3.77,1,1.56234630490025
 16,3,9,1.77,13.5,12.583333333333334,2,1,1,N,Manhattan,East Harlem South,Manhattan,Lenox Hill East,green,train,75,140,4.05,1,1.6193882432872684
 19,3,6,5.25,28.2,26.15,2,1,1,N,Manhattan,West Village,Manhattan,Yorkville East,yellow,train,249,262,7.09,1,2.0906287310704004
 0,4,6,19.82,75.8,37.88333333333333,2,1,1,N,Queens,JFK Airport,Brooklyn,Borough Park,yellow,train,132,26,0.0,0,0.0
@@ -22,12 +22,12 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 22,2,6,6.3,27.5,18.783333333333335,1,1,1,N,Manhattan,Midtown Center,Manhattan,World Trade Center,yellow,train,161,261,10.0,1,2.3978952727983707
 18,0,6,1.1,6.5,4.933333333333334,1,1,1,N,Manhattan,Upper East Side North,Manhattan,East Harlem North,yellow,train,236,74,1.25,1,0.8109302162163288
 16,4,12,0.2,5.8,4.366666666666666,1,Unknown,1,N,Brooklyn,Fort Greene,Brooklyn,Fort Greene,green,test,97,97,1.95,1,1.0818051703517284
-23,3,11,0.75,6.5,4.283333333333333,2,1,1,N,Manhattan,Midtown East,Manhattan,Sutton Place/Turtle Bay North,yellow,test,162,229,3.06,1,1.4011829736136414
+23,3,11,0.75,6.5,4.283333333333333,2,1,1,N,Manhattan,Midtown East,Manhattan,Sutton Place/Turtle Bay North,yellow,test,162,229,3.06,1,1.4011829736136412
 16,4,12,2.43,17.0,18.2,2,2,1,N,Brooklyn,Fort Greene,Brooklyn,Bedford,green,test,97,17,0.0,0,0.0
 23,3,10,24.39,103.1,61.15,2,5,1,N,Queens,Springfield Gardens South,Unknown,Outside of NYC,yellow,valid,219,265,5.0,1,1.791759469228055
 7,4,7,1.43,11.4,11.6,2,1,1,N,Manhattan,East Harlem North,Manhattan,East Harlem South,green,train,74,75,2.0,1,1.0986122886681098
 16,5,12,2.49,16.3,16.466666666666665,2,4,1,N,Manhattan,Lincoln Square East,Manhattan,Manhattan Valley,yellow,test,142,151,4.06,1,1.6213664832993742
-19,0,6,2.34,14.9,13.433333333333334,2,1,1,N,Manhattan,Central Harlem,Manhattan,Upper West Side North,green,train,41,238,1.8,1,1.0296194171811581
+19,0,6,2.34,14.9,13.433333333333334,2,1,1,N,Manhattan,Central Harlem,Manhattan,Upper West Side North,green,train,41,238,1.8,1,1.0296194171811583
 16,0,1,2.24,16.3,16.633333333333333,2,1,1,N,Manhattan,Midtown Center,Manhattan,Upper East Side North,yellow,train,161,236,4.71,1,1.742219023667919
 13,5,4,1.36,13.5,13.9,2,1,1,N,Queens,Elmhurst,Queens,Elmhurst,green,train,82,82,0.01,1,0.009950330853168083
 19,1,4,2.45,18.4,18.9,2,1,1,N,Manhattan,Times Sq/Theatre District,Manhattan,Upper East Side North,yellow,train,230,236,3.85,1,1.5789787049493917
@@ -133,7 +133,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 19,3,7,2.26,13.5,12.083333333333334,2,1,1,N,Manhattan,Central Park,Manhattan,Lenox Hill East,green,train,43,140,2.0,1,1.0986122886681098
 21,6,6,2.17,13.5,11.716666666666667,2,1,1,N,Manhattan,Murray Hill,Manhattan,West Chelsea/Hudson Yards,yellow,train,170,246,3.85,1,1.5789787049493917
 14,0,9,1.74,14.9,14.4,2,1,1,N,Manhattan,East Harlem South,Manhattan,Upper East Side South,green,train,75,237,3.83,1,1.5748464676644813
-11,3,3,0.64,5.8,4.133333333333334,2,2,1,N,Manhattan,Upper East Side South,Manhattan,Upper East Side North,yellow,train,237,236,1.76,1,1.0152306797290584
+11,3,3,0.64,5.8,4.133333333333334,2,2,1,N,Manhattan,Upper East Side South,Manhattan,Upper East Side North,yellow,train,237,236,1.76,1,1.0152306797290587
 20,4,7,2.05,12.1,7.133333333333334,2,1,1,N,Manhattan,Seaport,Manhattan,World Trade Center,yellow,train,209,261,3.57,1,1.5195132049061133
 18,2,7,2.2,12.1,8.45,1,Unknown,1,N,Manhattan,Upper East Side North,Manhattan,Lincoln Square East,yellow,train,236,142,3.7,1,1.547562508716013
 15,6,8,3.0,47.1,61.3,2,2,1,N,Manhattan,Midtown North,Manhattan,Times Sq/Theatre District,yellow,train,163,230,5.0,1,1.791759469228055
@@ -188,7 +188,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 23,3,1,1.7,12.1,10.65,1,1,1,N,Manhattan,Clinton East,Manhattan,Kips Bay,yellow,train,48,137,4.45,1,1.6956156086751528
 21,6,8,1.26,8.6,6.033333333333333,2,1,1,N,Manhattan,East Harlem South,Manhattan,East Harlem North,green,train,75,74,0.0,0,0.0
 12,4,9,1.29,10.0,7.783333333333333,2,1,1,N,Manhattan,East Harlem South,Manhattan,Upper East Side South,green,train,75,237,2.0,1,1.0986122886681098
-12,1,11,2.38,14.2,12.983333333333333,2,1,1,N,Manhattan,East Harlem North,Manhattan,Upper East Side North,green,test,74,236,3.69,1,1.5454325824581878
+12,1,11,2.38,14.2,12.983333333333333,2,1,1,N,Manhattan,East Harlem North,Manhattan,Upper East Side North,green,test,74,236,3.69,1,1.545432582458188
 23,5,11,2.16,19.1,21.183333333333334,2,1,1,N,Manhattan,Meatpacking/West Village West,Manhattan,Midtown South,yellow,test,158,164,4.97,1,1.7867469274045107
 3,3,7,0.59,6.5,4.3,2,1,1,N,Manhattan,Little Italy/NoLiTa,Manhattan,Little Italy/NoLiTa,yellow,train,144,144,2.45,1,1.2383742310432684
 8,0,2,1.9,13.5,11.916666666666666,1,1,1,N,Manhattan,East Harlem North,Manhattan,Morningside Heights,green,train,74,166,0.0,0,0.0
@@ -212,7 +212,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 22,2,1,0.8,6.5,6.416666666666667,1,2,1,N,Manhattan,Times Sq/Theatre District,Manhattan,Midtown North,yellow,train,230,163,2.3,1,1.1939224684724346
 15,1,1,4.58,31.7,34.4,2,6+,1,N,Manhattan,Morningside Heights,Manhattan,Sutton Place/Turtle Bay North,green,train,166,229,7.34,1,2.1210632163706555
 12,3,6,3.08,19.1,16.316666666666666,2,1,1,N,Manhattan,Hamilton Heights,Manhattan,Upper West Side South,green,train,116,239,2.65,1,1.2947271675944
-16,1,9,1.05,7.9,6.166666666666667,2,1,1,N,Manhattan,Upper East Side South,Manhattan,Upper East Side North,yellow,train,237,236,3.6,1,1.5260563034950492
+16,1,9,1.05,7.9,6.166666666666667,2,1,1,N,Manhattan,Upper East Side South,Manhattan,Upper East Side North,yellow,train,237,236,3.6,1,1.5260563034950494
 16,4,2,2.64,16.3,14.5,2,1,1,N,Queens,Flushing,Queens,Whitestone,green,train,92,252,4.06,1,1.6213664832993742
 12,1,6,2.42,20.5,23.133333333333333,2,2,1,N,Manhattan,East Harlem South,Manhattan,Upper East Side South,green,train,75,237,1.0,1,0.6931471805599453
 13,1,2,0.87,6.5,4.266666666666667,2,1,1,N,Manhattan,East Chelsea,Manhattan,West Chelsea/Hudson Yards,yellow,train,68,246,2.25,1,1.1786549963416462
@@ -225,7 +225,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 18,5,3,2.4,13.5,10.783333333333333,2,1,1,N,Manhattan,East Harlem North,Manhattan,Upper West Side North,green,train,74,238,3.55,1,1.5151272329628591
 13,1,9,1.03,13.5,14.983333333333333,2,1,1,N,Manhattan,Times Sq/Theatre District,Manhattan,UN/Turtle Bay South,yellow,train,230,233,2.0,1,1.0986122886681098
 9,4,11,1.92,14.2,13.866666666666667,2,1,1,N,Manhattan,East Village,Manhattan,Midtown Center,yellow,test,79,161,3.79,1,1.5665304114228238
-18,2,6,1.82,12.1,9.983333333333333,2,1,1,N,Manhattan,East Harlem South,Manhattan,Central Park,green,train,75,43,3.77,1,1.5623463049002497
+18,2,6,1.82,12.1,9.983333333333333,2,1,1,N,Manhattan,East Harlem South,Manhattan,Central Park,green,train,75,43,3.77,1,1.56234630490025
 8,2,10,3.36,26.8,30.45,2,2,1,N,Manhattan,Murray Hill,Manhattan,Upper East Side North,yellow,valid,170,236,6.31,1,1.9892432737616872
 14,2,10,1.0,7.9,7.383333333333334,1,1,1,N,Manhattan,Lower East Side,Manhattan,SoHo,yellow,valid,148,211,2.55,1,1.2669476034873244
 23,5,2,1.24,8.6,7.2,2,1,1,N,Manhattan,Lincoln Square East,Manhattan,Upper West Side North,yellow,train,142,238,3.4,1,1.4816045409242156
@@ -234,7 +234,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 17,1,7,14.0,46.5,47.28333333333333,1,1,99,N,Queens,South Ozone Park,Bronx,Morrisania/Melrose,yellow,train,216,167,0.0,0,0.0
 19,4,3,1.11,12.1,12.7,2,3,1,N,Manhattan,West Chelsea/Hudson Yards,Manhattan,Murray Hill,yellow,train,246,170,2.0,1,1.0986122886681098
 12,5,6,3.58,28.9,32.05,2,1,1,N,Brooklyn,Fort Greene,Manhattan,World Trade Center,green,train,97,261,6.78,1,2.0515563381903004
-8,3,4,0.68,6.5,4.066666666666666,2,1,1,N,Manhattan,Central Harlem,Manhattan,Morningside Heights,yellow,train,41,166,1.76,1,1.0152306797290584
+8,3,4,0.68,6.5,4.066666666666666,2,1,1,N,Manhattan,Central Harlem,Manhattan,Morningside Heights,yellow,train,41,166,1.76,1,1.0152306797290587
 2,5,3,1.64,10.7,8.566666666666666,2,3,1,N,Manhattan,Meatpacking/West Village West,Manhattan,Gramercy,yellow,train,158,107,3.29,1,1.4562867329399256
 22,3,10,10.1,51.3,43.93333333333333,2,1,1,N,Manhattan,East Village,Manhattan,Hamilton Heights,yellow,valid,79,116,11.41,1,2.5185025992165158
 14,3,6,1.7,14.9,15.9,2,6+,1,N,Manhattan,Lower East Side,Manhattan,Financial District North,yellow,train,148,87,4.91,1,1.776645831418007
@@ -242,14 +242,14 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 11,3,1,3.5,24.0,28.9,1,1,1,N,Manhattan,Gramercy,Manhattan,Yorkville East,yellow,train,107,262,5.75,1,1.9095425048844386
 20,4,5,1.82,11.4,9.666666666666666,2,1,1,N,Manhattan,Greenwich Village North,Manhattan,East Chelsea,yellow,train,113,68,3.43,1,1.4883995840570443
 0,6,4,2.81,13.5,9.2,2,1,1,N,Manhattan,Midtown Center,Manhattan,Upper West Side North,yellow,train,161,238,3.85,1,1.5789787049493917
-6,4,7,1.69,12.1,11.45,2,1,1,N,Manhattan,East Harlem North,Manhattan,Upper East Side North,green,train,74,236,3.27,1,1.451613827240533
+6,4,7,1.69,12.1,11.45,2,1,1,N,Manhattan,East Harlem North,Manhattan,Upper East Side North,green,train,74,236,3.27,1,1.4516138272405332
 13,2,4,1.71,13.5,13.116666666666667,2,1,1,N,Manhattan,West Chelsea/Hudson Yards,Manhattan,Union Sq,yellow,train,246,234,3.65,1,1.536867219599265
 10,4,11,15.76,65.3,46.05,2,1,1,N,Queens,JFK Airport,Brooklyn,Greenpoint,yellow,test,132,112,13.71,1,2.688527534613346
 12,6,8,1.63,10.0,7.766666666666667,2,4,1,N,Manhattan,Upper West Side South,Manhattan,Clinton East,yellow,train,239,48,2.95,1,1.3737155789130306
 14,2,6,4.21,24.7,23.216666666666665,2,1,1,N,Manhattan,East Harlem North,Manhattan,Washington Heights South,green,train,74,244,5.24,1,1.8309801823813363
 11,2,8,0.49,5.1,3.1,2,1,1,N,Manhattan,East Harlem South,Manhattan,Upper East Side North,green,train,75,236,1.87,1,1.0543120297715298
 21,4,10,1.88,12.8,11.216666666666667,2,2,1,N,Manhattan,Upper East Side South,Manhattan,Upper West Side North,yellow,valid,237,238,4.45,1,1.6956156086751528
-18,0,12,1.08,12.1,12.916666666666666,2,1,1,N,Brooklyn,Fort Greene,Brooklyn,Clinton Hill,green,test,97,49,3.22,1,1.4398351280479207
+18,0,12,1.08,12.1,12.916666666666666,2,1,1,N,Brooklyn,Fort Greene,Brooklyn,Clinton Hill,green,test,97,49,3.22,1,1.4398351280479205
 13,4,10,0.74,7.9,6.45,2,1,1,N,Manhattan,Midtown East,Manhattan,Upper East Side South,yellow,valid,162,237,2.5,1,1.252762968495368
 19,1,2,0.66,5.8,4.283333333333333,2,1,1,N,Queens,Forest Hills,Queens,Forest Hills,green,train,95,95,1.0,1,0.6931471805599453
 11,6,10,2.3,13.5,11.05,2,1,1,N,Manhattan,East Harlem North,Manhattan,Upper East Side North,green,valid,74,236,4.44,1,1.6937790608678513
@@ -290,7 +290,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 23,4,9,12.89,52.7,29.2,2,1,1,N,Queens,Jamaica,Manhattan,Sutton Place/Turtle Bay North,green,train,130,229,5.0,1,1.791759469228055
 13,5,8,1.3,10.7,8.883333333333333,1,1,1,N,Brooklyn,Sheepshead Bay,Brooklyn,Manhattan Beach,green,train,210,150,2.4,1,1.2237754316221157
 9,4,3,10.31,47.1,32.36666666666667,2,1,1,N,Queens,LaGuardia Airport,Manhattan,Lincoln Square East,yellow,train,138,142,16.2,1,2.8449093838194073
-21,3,7,0.57,6.5,4.45,2,2,1,N,Manhattan,Midtown Center,Manhattan,Midtown North,yellow,train,161,163,3.06,1,1.4011829736136414
+21,3,7,0.57,6.5,4.45,2,2,1,N,Manhattan,Midtown Center,Manhattan,Midtown North,yellow,train,161,163,3.06,1,1.4011829736136412
 21,2,11,3.61,17.7,9.483333333333333,2,1,1,N,Queens,Elmhurst,Queens,LaGuardia Airport,green,test,82,138,5.04,1,1.7984040119467235
 11,5,3,2.04,13.5,11.916666666666666,2,6+,1,N,Manhattan,Upper East Side North,Manhattan,Midtown Center,green,train,236,161,3.7,1,1.547562508716013
 16,0,11,3.83,18.4,10.3,2,1,1,N,Queens,Jackson Heights,Queens,LaGuardia Airport,green,test,129,138,2.8,1,1.33500106673234
@@ -314,10 +314,10 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 13,2,9,5.98,29.6,22.983333333333334,2,2,1,N,Manhattan,Central Park,Manhattan,Meatpacking/West Village West,green,train,43,158,3.38,1,1.4770487243883548
 23,5,8,15.3,59.7,30.816666666666666,2,1,1,N,Queens,JFK Airport,Queens,Long Island City/Queens Plaza,yellow,train,132,146,12.44,1,2.5982353350950036
 18,3,10,1.07,9.3,8.066666666666666,2,1,1,N,Manhattan,Upper East Side South,Manhattan,Lincoln Square East,yellow,valid,237,142,4.74,1,1.747459210331475
-11,4,2,1.84,12.1,9.8,2,1,1,N,Manhattan,Upper West Side South,Manhattan,Morningside Heights,yellow,train,239,166,3.22,1,1.4398351280479207
+11,4,2,1.84,12.1,9.8,2,1,1,N,Manhattan,Upper West Side South,Manhattan,Morningside Heights,yellow,train,239,166,3.22,1,1.4398351280479205
 20,1,9,12.24,49.2,32.8,2,1,1,N,Brooklyn,Brooklyn Heights,Manhattan,Upper West Side North,green,train,33,238,8.17,1,2.2159372862683733
 20,2,12,0.44,5.1,2.9833333333333334,2,2,1,N,Manhattan,Yorkville East,Manhattan,Yorkville West,yellow,test,262,263,1.0,1,0.6931471805599453
-16,3,8,1.14,7.9,5.583333333333333,2,1,1,N,Manhattan,Times Sq/Theatre District,Manhattan,Lincoln Square East,yellow,train,230,142,3.03,1,1.3937663759585914
+16,3,8,1.14,7.9,5.583333333333333,2,1,1,N,Manhattan,Times Sq/Theatre District,Manhattan,Lincoln Square East,yellow,train,230,142,3.03,1,1.3937663759585917
 21,3,5,1.49,9.3,6.65,2,1,1,N,Manhattan,Central Park,Manhattan,Central Harlem,green,train,43,41,2.36,1,1.2119409739751128
 19,3,1,0.4,5.8,4.116666666666666,1,1,1,N,Manhattan,Upper East Side North,Manhattan,East Harlem South,green,train,236,75,1.95,1,1.0818051703517284
 10,3,9,1.96,15.6,16.366666666666667,2,1,1,N,Manhattan,East Harlem North,Manhattan,Upper East Side North,green,train,74,236,1.0,1,0.6931471805599453
@@ -327,7 +327,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 1,6,11,0.93,7.2,5.35,2,4,1,N,Manhattan,Flatiron,Manhattan,Meatpacking/West Village West,yellow,test,90,158,3.88,1,1.5851452198650557
 16,2,12,1.34,9.3,7.95,2,1,1,N,Manhattan,East Harlem South,Manhattan,East Harlem North,green,test,75,74,0.0,0,0.0
 10,6,7,1.26,9.3,6.3,2,1,1,N,Manhattan,Upper West Side South,Manhattan,Upper East Side North,yellow,train,239,236,2.66,1,1.297463147413275
-14,3,5,2.14,14.9,14.733333333333333,2,1,1,N,Manhattan,Central Harlem,Manhattan,Manhattan Valley,green,train,41,151,3.28,1,1.4539530095937052
+14,3,5,2.14,14.9,14.733333333333333,2,1,1,N,Manhattan,Central Harlem,Manhattan,Manhattan Valley,green,train,41,151,3.28,1,1.4539530095937054
 20,3,10,5.25,33.8,36.483333333333334,2,1,1,N,Manhattan,Penn Station/Madison Sq West,Manhattan,Central Harlem North,yellow,valid,186,42,0.0,0,0.0
 17,2,3,0.3,5.8,5.333333333333333,1,1,1,N,Manhattan,Midtown Center,Manhattan,Times Sq/Theatre District,yellow,train,161,230,3.9,1,1.589235205116581
 9,0,11,1.7,13.5,13.05,2,1,1,N,Manhattan,East Harlem North,Manhattan,Morningside Heights,green,test,74,166,1.5,1,0.9162907318741551
@@ -335,7 +335,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 19,2,12,0.78,7.9,7.283333333333333,2,1,1,N,Manhattan,Garment District,Manhattan,West Chelsea/Hudson Yards,yellow,test,100,246,1.0,1,0.6931471805599453
 1,6,4,1.3,11.4,11.8,2,4,1,N,Manhattan,Lower East Side,Manhattan,East Village,yellow,train,148,79,3.43,1,1.4883995840570443
 6,3,2,1.4,7.9,4.583333333333333,1,1,1,N,Manhattan,East Harlem North,Manhattan,East Harlem South,green,train,74,75,2.35,1,1.208960345836975
-17,5,5,4.38,26.8,25.716666666666665,2,1,1,N,Manhattan,Midtown East,Brooklyn,Greenpoint,yellow,train,162,112,7.7,1,2.163323025660538
+17,5,5,4.38,26.8,25.716666666666665,2,1,1,N,Manhattan,Midtown East,Brooklyn,Greenpoint,yellow,train,162,112,7.7,1,2.1633230256605382
 15,5,2,1.58,12.8,12.7,2,2,1,N,Manhattan,Midtown Center,Manhattan,Upper East Side South,yellow,train,161,237,3.51,1,1.506297153514587
 20,2,2,2.08,13.5,11.516666666666667,2,1,1,N,Manhattan,Upper East Side South,Manhattan,Upper West Side North,yellow,train,237,238,3.7,1,1.547562508716013
 20,5,10,0.73,6.5,4.0,2,1,1,N,Queens,Kew Gardens,Queens,Briarwood/Jamaica Hills,green,valid,134,28,2.25,1,1.1786549963416462
@@ -360,7 +360,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 0,5,6,8.33,32.4,13.133333333333333,2,1,1,N,Queens,LaGuardia Airport,Bronx,Highbridge,yellow,train,138,119,5.41,1,1.8578592709325787
 12,1,11,0.98,8.6,6.666666666666667,2,1,1,N,Manhattan,East Harlem North,Manhattan,Central Harlem,green,test,74,41,2.0,1,1.0986122886681098
 12,2,10,3.99,24.0,21.183333333333334,2,1,1,N,Manhattan,West Chelsea/Hudson Yards,Manhattan,Financial District North,yellow,valid,246,87,5.75,1,1.9095425048844386
-12,6,8,5.54,30.3,29.316666666666666,2,1,1,N,Queens,Astoria,Manhattan,Penn Station/Madison Sq West,green,train,7,186,7.06,1,2.0869135565185366
+12,6,8,5.54,30.3,29.316666666666666,2,1,1,N,Queens,Astoria,Manhattan,Penn Station/Madison Sq West,green,train,7,186,7.06,1,2.086913556518537
 17,3,6,2.0,12.8,13.116666666666667,1,1,1,N,Manhattan,West Village,Manhattan,West Chelsea/Hudson Yards,yellow,train,249,246,4.0,1,1.6094379124341003
 16,0,1,0.73,6.5,4.333333333333333,2,1,1,N,Manhattan,Upper East Side South,Manhattan,Lenox Hill West,yellow,train,237,141,2.25,1,1.1786549963416462
 13,5,1,2.8,16.3,16.133333333333333,1,1,1,N,Manhattan,West Chelsea/Hudson Yards,Manhattan,World Trade Center,yellow,train,246,261,2.0,1,1.0986122886681098
@@ -372,7 +372,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 16,5,7,5.19,25.4,21.05,2,1,1,N,Queens,Long Island City/Hunters Point,Queens,LaGuardia Airport,green,train,145,138,6.38,1,1.998773638612381
 20,4,9,0.92,7.9,7.083333333333333,2,1,1,N,Manhattan,Kips Bay,Manhattan,East Village,yellow,train,137,79,0.0,0,0.0
 13,0,10,6.46,31.7,27.15,2,2,1,N,Manhattan,Morningside Heights,Manhattan,Flatiron,green,valid,166,90,7.34,1,2.1210632163706555
-19,0,3,1.41,13.5,13.516666666666667,2,1,1,N,Manhattan,Midtown Center,Manhattan,Lincoln Square East,yellow,train,161,142,3.11,1,1.413423028508143
+19,0,3,1.41,13.5,13.516666666666667,2,1,1,N,Manhattan,Midtown Center,Manhattan,Lincoln Square East,yellow,train,161,142,3.11,1,1.4134230285081433
 23,4,3,1.78,12.1,11.233333333333333,2,3,1,N,Manhattan,Union Sq,Manhattan,West Chelsea/Hudson Yards,yellow,train,234,246,0.0,0,0.0
 13,6,4,3.33,26.1,25.566666666666666,2,1,1,N,Queens,Forest Hills,Queens,Flushing Meadows-Corona Park,green,train,95,93,5.52,1,1.8748743759385615
 17,5,11,6.07,27.5,18.783333333333335,2,1,1,N,Manhattan,Financial District South,Manhattan,Lenox Hill East,yellow,test,88,140,8.06,1,2.203869120054888
@@ -381,7 +381,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 20,1,7,1.75,13.5,13.45,2,1,1,N,Brooklyn,Fort Greene,Brooklyn,Park Slope,green,train,97,181,4.0,1,1.6094379124341003
 18,3,4,0.52,5.8,3.4166666666666665,2,1,1,N,Manhattan,Lincoln Square West,Manhattan,Lincoln Square West,yellow,train,143,143,2.46,1,1.2412685890696329
 18,5,1,1.3,12.1,16.2,1,3,1,N,Manhattan,Midtown North,Manhattan,Midtown South,yellow,train,163,164,0.0,0,0.0
-18,3,1,1.82,12.1,10.716666666666667,2,1,1,N,Manhattan,East Harlem North,Manhattan,Upper East Side North,green,train,74,236,3.39,1,1.4793292270870801
+18,3,1,1.82,12.1,10.716666666666667,2,1,1,N,Manhattan,East Harlem North,Manhattan,Upper East Side North,green,train,74,236,3.39,1,1.47932922708708
 23,2,5,2.3,12.8,9.133333333333333,2,1,1,N,Brooklyn,DUMBO/Vinegar Hill,Manhattan,Financial District North,green,train,66,87,1.0,1,0.6931471805599453
 21,6,1,1.22,8.6,7.216666666666667,2,1,1,N,Manhattan,West Village,Manhattan,East Village,yellow,train,249,79,3.59,1,1.5238800240724537
 13,1,2,0.89,7.9,6.716666666666667,2,2,1,N,Manhattan,Upper East Side South,Manhattan,Lenox Hill East,yellow,train,237,140,2.98,1,1.3812818192963463
@@ -434,7 +434,7 @@ pickup_hour,pickup_weekday,pickup_month,trip_distance,fare_amount,trip_duration_
 17,3,3,16.8,90.2,55.45,1,1,3,N,Manhattan,Midtown North,EWR,Newark Airport,yellow,train,163,1,10.0,1,2.3978952727983707
 13,3,1,0.6,5.1,2.683333333333333,2,1,1,N,Manhattan,Union Sq,Manhattan,West Village,yellow,train,234,249,1.97,1,1.0885619528146082
 18,6,3,2.88,16.3,14.1,2,1,1,N,Manhattan,East Harlem North,Manhattan,Lenox Hill East,green,train,74,140,3.08,1,1.4060969884160703
-20,0,9,1.99,12.1,9.633333333333333,2,1,1,N,Manhattan,East Harlem North,Manhattan,Yorkville West,green,train,74,263,3.27,1,1.451613827240533
+20,0,9,1.99,12.1,9.633333333333333,2,1,1,N,Manhattan,East Harlem North,Manhattan,Yorkville West,green,train,74,263,3.27,1,1.4516138272405332
 15,6,8,1.27,7.9,5.35,2,2,1,N,Manhattan,East Village,Manhattan,Murray Hill,yellow,train,79,170,1.0,1,0.6931471805599453
 16,5,8,2.16,15.6,16.0,2,3,1,N,Manhattan,East Village,Manhattan,Flatiron,yellow,train,79,90,0.0,0,0.0
 22,3,7,0.92,8.6,6.866666666666666,2,1,1,N,Manhattan,Midtown North,Manhattan,Midtown Center,yellow,train,163,161,2.87,1,1.3532545070416904

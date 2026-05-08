@@ -27,7 +27,11 @@ def main() -> None:
     parser.add_argument("--extra-train-sample", type=int, default=180000)
     parser.add_argument("--extra-test-sample", type=int, default=120000)
     parser.add_argument("--sequence-epochs", type=int, default=45)
+    parser.add_argument("--sequence-batch-size", type=int, default=1024)
+    parser.add_argument("--sequence-seed", type=int, default=42)
     parser.add_argument("--graph-epochs", type=int, default=500)
+    parser.add_argument("--graph-seed", type=int, default=42)
+    parser.add_argument("--driver-seed", type=int, default=42)
     parser.add_argument("--train-driver-llm", action="store_true")
     args = parser.parse_args()
 
@@ -58,10 +62,48 @@ def main() -> None:
                 str(args.extra_test_sample),
             ]
         )
-        run([sys.executable, "scripts/train_sequence_model.py", "--epochs", str(args.sequence_epochs)])
-        run([sys.executable, "scripts/train_graph_model.py", "--epochs", str(args.graph_epochs)])
+        run(
+            [
+                sys.executable,
+                "scripts/train_sequence_model.py",
+                "--epochs",
+                str(args.sequence_epochs),
+                "--batch-size",
+                str(args.sequence_batch_size),
+                "--seed",
+                str(args.sequence_seed),
+            ]
+        )
+        run(
+            [
+                sys.executable,
+                "scripts/train_graph_model.py",
+                "--epochs",
+                str(args.graph_epochs),
+                "--seed",
+                str(args.graph_seed),
+            ]
+        )
         if args.train_driver_llm:
-            run([sys.executable, "scripts/train_driver_llm.py"])
+            run(
+                [
+                    sys.executable,
+                    "scripts/train_driver_llm.py",
+                    "--model",
+                    "Qwen/Qwen2.5-0.5B-Instruct",
+                    "--epochs",
+                    "3",
+                    "--batch-size",
+                    "1",
+                    "--lr",
+                    "1e-4",
+                    "--max-length",
+                    "384",
+                    "--lora",
+                    "--seed",
+                    str(args.driver_seed),
+                ]
+            )
 
     package = SUBMISSION_DIR / "tip_or_skip_completion_outputs.zip"
     if package.exists():

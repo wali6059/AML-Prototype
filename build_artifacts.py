@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import shutil
-from pathlib import Path
-
 import pandas as pd
 
 from pipeline import (
     ARTIFACT_DIR,
-    ROOT_DIR,
     RAW_DATA_DIR,
     load_zone_lookup,
     sample_taxi_data,
@@ -18,25 +14,19 @@ from pipeline import (
 )
 
 
-def copy_blog_background() -> None:
-    source = ROOT_DIR / "blog_background.md"
-    target = ARTIFACT_DIR / "blog_background.md"
-    shutil.copyfile(source, target)
-
-
 def write_dataset_card() -> None:
     zone_lookup = load_zone_lookup(RAW_DATA_DIR)
     lines = [
         "# Dataset Notes",
         "",
-        "This Space ships compact artifacts generated from the NYC TLC 2025 taxi trip data stored locally during development.",
+        "This Space ships compact baseline runtime artifacts generated from the repo-local NYC TLC 2025 taxi trip data.",
         "",
-        "- Raw data directory during development: the parent `Prototype/` folder.",
+        "- Raw data directory: the repo-local `data/` folder.",
         "- Source tables: 12 monthly yellow taxi parquet files and 12 monthly green taxi parquet files.",
         f"- Taxi zones available: {len(zone_lookup)} location IDs.",
         "- Training scope: credit-card trips only, because TLC `tip_amount` excludes cash tips.",
         "- Cleaning rules: dropped rows with nonpositive fare, nonpositive trip distance, and nonpositive trip duration.",
-        "- Split policy: January-September train, October validation, November-December test.",
+        "- Baseline split policy: January-September train, October validation, November-December test.",
         "",
         "The app reads only saved artifacts and does not require the raw parquet files at runtime.",
     ]
@@ -61,7 +51,6 @@ def main() -> None:
     combined = pd.concat(combined_frames, ignore_index=True)
     save_summary_tables(combined)
     save_metrics(all_metrics)
-    copy_blog_background()
     write_dataset_card()
     print(f"Artifacts written to {ARTIFACT_DIR}")
 

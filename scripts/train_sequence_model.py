@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -21,6 +22,16 @@ from tip_or_skip.config import ARTIFACT_DIR, FIGURE_DIR, ensure_directories
 from tip_or_skip.data import load_dataset
 
 EXPERIMENT_DIR = ARTIFACT_DIR / "runs"
+
+
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    if torch.backends.cudnn.is_available():
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
 
 
 class TipLSTM(nn.Module):
@@ -116,8 +127,10 @@ def main() -> None:
     parser.add_argument("--lookback", type=int, default=6)
     parser.add_argument("--hidden", type=int, default=40)
     parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
+    set_seed(args.seed)
     ensure_directories()
     EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
     frame = _matrix(_hourly())
@@ -133,7 +146,14 @@ def main() -> None:
     model = TipLSTM(x_train.shape[-1], args.hidden).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
     loss_fn = nn.MSELoss()
-    loader = DataLoader(TensorDataset(x_train, y_train), batch_size=args.batch_size, shuffle=True)
+    generator = torch.Generator()
+    generator.manual_seed(args.seed)
+    loader = DataLoader(
+        TensorDataset(x_train, y_train),
+        batch_size=args.batch_size,
+        shuffle=True,
+        generator=generator,
+    )
     history = []
     best_state = None
     best_valid = float("inf")
@@ -165,7 +185,7 @@ def main() -> None:
     naive = xs[np.array([s == "test" for s in splits])][:, -1, [1, 2]]
     naive = naive * std.squeeze()[[1, 2]] + mean.squeeze()[[1, 2]]
     metrics = _metrics(pred, y, naive)
-    metrics.update({"epochs": args.epochs, "lookback": args.lookback, "device": str(device), "test_rows": int(len(y))})
+    metrics.update({"epochs": args.epochs, "lookback": args.lookback, "seed": args.seed, "device": str(device), "test_rows": int(len(y))})
     pd.DataFrame(history).to_csv(EXPERIMENT_DIR / "sequence_training_history.csv", index=False)
     pd.DataFrame({"tip_rate_actual": y[:, 0], "tip_rate_pred": pred[:, 0], "avg_tip_actual": y[:, 1], "avg_tip_pred": pred[:, 1]}).to_csv(EXPERIMENT_DIR / "sequence_predictions.csv", index=False)
     (EXPERIMENT_DIR / "sequence_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")

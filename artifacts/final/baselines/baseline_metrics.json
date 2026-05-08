@@ -1,0 +1,30 @@
+{
+  "logistic_ridge": {
+    "class_roc_auc": 0.7369609882009603,
+    "class_average_precision": 0.962399125466434,
+    "class_log_loss": 0.5741370196096169,
+    "class_brier": 0.19126193332203104,
+    "class_ece": 0.3538125537090064,
+    "class_precision": 0.956899694121749,
+    "class_recall": 0.7784601631851401,
+    "class_f1": 0.8585058469588586,
+    "logtip_mae": 0.2383795434782102,
+    "logtip_rmse": 0.3394831069199797,
+    "logtip_bias": -0.011634736343064982,
+    "expected_tip_mae": 2.5066832244282016
+  },
+  "tree_hurdle": {
+    "class_roc_auc": 0.770509575859474,
+    "class_average_precision": 0.968648045921951,
+    "class_log_loss": 0.2047045936201543,
+    "class_brier": 0.05216000587753009,
+    "class_ece": 0.00390555829083489,
+    "class_precision": 0.9410902909870897,
+    "class_recall": 0.9993703812738928,
+    "class_f1": 0.9693551395927845,
+    "logtip_mae": 0.2222814686019012,
+    "logtip_rmse": 0.31919290636909536,
+    "logtip_bias": -0.014073957739683483,
+    "expected_tip_mae": 1.4475479483143066
+  }
+}

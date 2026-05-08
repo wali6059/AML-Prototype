@@ -36,13 +36,6 @@ TLC_ZONES_URL = (
 _ZONE_CENTROIDS_CACHE: dict[str, tuple[float, float]] | None = None
 
 
-def load_blog_background() -> str:
-    root_blog_path = ROOT_DIR / "blog_background.md"
-    if root_blog_path.exists():
-        return root_blog_path.read_text(encoding="utf-8")
-    return (ARTIFACT_DIR / "blog_background.md").read_text(encoding="utf-8")
-
-
 def _read_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path) if path.exists() else pd.DataFrame()
 
@@ -83,10 +76,9 @@ def _load_zone_centroids() -> dict[str, tuple[float, float]]:
 
 def load_artifacts() -> dict:
     metrics = json.loads((ARTIFACT_DIR / "metrics.json").read_text(encoding="utf-8"))
-    local_report_dir = ROOT_DIR.parent / "report"
     summary_candidates = [
         REPORT_DATA_DIR / "build_summary.json",
-        ROOT_DIR.parent / "final_dataset" / "build_summary.json",
+        ROOT_DIR / "data" / "final_dataset" / "build_summary.json",
     ]
     summary_path = next((path for path in summary_candidates if path.exists()), None)
     final_summary = (
@@ -106,12 +98,19 @@ def load_artifacts() -> dict:
     sample_rows = pd.read_csv(ARTIFACT_DIR / "sample_rows.csv")
     zone_options = pd.read_csv(ARTIFACT_DIR / "zone_options.csv")
     dataset_notes = (ARTIFACT_DIR / "dataset_notes.md").read_text(encoding="utf-8")
-    blog_background = load_blog_background()
     models = {
         "yellow": joblib.load(ARTIFACT_DIR / "yellow_model_bundle.joblib"),
         "green": joblib.load(ARTIFACT_DIR / "green_model_bundle.joblib"),
     }
     final_dir = ARTIFACT_DIR / "final"
+    final_tree_model = None
+    final_tree_error = ""
+    final_tree_path = final_dir / "baselines" / "tree_hurdle.joblib"
+    if final_tree_path.exists():
+        try:
+            final_tree_model = joblib.load(final_tree_path)
+        except Exception as exc:
+            final_tree_error = str(exc)
     deep_dir = final_dir / "transformer_mdn"
     deep_bundle = None
     deep_error = ""
@@ -120,10 +119,7 @@ def load_artifacts() -> dict:
             deep_bundle = load_deep_bundle(deep_dir)
         except Exception as exc:
             deep_error = str(exc)
-    report_data_dir = next(
-        (path for path in (REPORT_DATA_DIR, local_report_dir) if path.exists()),
-        REPORT_DATA_DIR,
-    )
+    report_data_dir = REPORT_DATA_DIR
     report_dir = DOCS_DIR if DOCS_DIR.exists() else report_data_dir
     final_metrics_path = report_data_dir / "final_metrics.csv"
     zone_risk_path = report_data_dir / "zone_risk_summary.csv"
@@ -143,8 +139,9 @@ def load_artifacts() -> dict:
         "sample_rows": sample_rows,
         "zone_options": zone_options,
         "dataset_notes": dataset_notes,
-        "blog_background": blog_background,
         "models": models,
+        "final_tree_model": final_tree_model,
+        "final_tree_error": final_tree_error,
         "deep_bundle": deep_bundle,
         "deep_error": deep_error,
         "final_dir": final_dir,
@@ -319,7 +316,7 @@ def compare_ride_options(
             ratecode="1",
             store_and_fwd_flag="N",
         )
-        prediction = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+        prediction = _predict_tree_hurdle(taxi_type, feature_row)
         row = {
             "Ride option": label,
             "Pickup area": current_zone,
@@ -521,7 +518,7 @@ def run_sensitivity(
             ratecode="1",
             store_and_fwd_flag="N",
         )
-        prediction = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+        prediction = _predict_tree_hurdle(taxi_type, feature_row)
         rows.append(
             {
                 sweep_by: value,
@@ -662,8 +659,20 @@ def _predict_transformer_mdn(feature_row: dict) -> dict | None:
         return None
 
 
+def _predict_tree_hurdle(taxi_type: str, feature_row: dict) -> dict[str, float]:
+    final_tree_model = ARTIFACTS.get("final_tree_model")
+    if final_tree_model is not None:
+        pred = final_tree_model.predict_frame(pd.DataFrame([_deep_feature_row(feature_row)])).iloc[0]
+        return {
+            "tip_probability": float(pred["tip_probability"]),
+            "conditional_tip": float(pred["conditional_tip_mean"]),
+            "expected_tip": float(pred["expected_tip"]),
+        }
+    return predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+
+
 def _same_ride_model_rows(taxi_type: str, feature_row: dict) -> list[dict]:
-    tree = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+    tree = _predict_tree_hurdle(taxi_type, feature_row)
     rows = [
         {
             "Model": "Boosted tree hurdle",
@@ -778,7 +787,7 @@ def run_prediction(
         ratecode=ratecode,
         store_and_fwd_flag=store_and_fwd_flag,
     )
-    prediction = predict_tip(ARTIFACTS["models"][taxi_type], feature_row)
+    prediction = _predict_tree_hurdle(taxi_type, feature_row)
     summary = (
         f"Estimated chance of a recorded electronic tip: {prediction['tip_probability']:.1%}\n\n"
         f"Predicted tip amount if a tip happens: ${prediction['conditional_tip']:.2f}\n\n"
@@ -1438,9 +1447,6 @@ with gr.Blocks(title="NYC Taxi Tip Prototype") as demo:
             inputs=[planner_taxi_type, planner_borough, planner_objective, planner_top_k],
             outputs=planner_table,
         )
-
-    with gr.Tab("Blog Draft"):
-        gr.Markdown(ARTIFACTS["blog_background"])
 
 
 if __name__ == "__main__":

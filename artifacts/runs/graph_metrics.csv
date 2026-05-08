@@ -1,2 +1,2 @@
-device,nodes,valid_tip_mae,test_tip_mae,test_tip_rate_mae,naive_test_tip_mae,naive_test_tip_rate_mae,blend_alpha,blend_valid_tip_mae,blend_test_tip_mae
-cuda,259,1.125634789466858,1.209742784500122,0.12051308900117874,0.4137954115867615,0.04817184433341026,0.0,0.27405645345386703,0.4137954115867615
+device,seed,nodes,valid_tip_mae,test_tip_mae,test_tip_rate_mae,naive_test_tip_mae,naive_test_tip_rate_mae,blend_alpha,blend_valid_tip_mae,blend_test_tip_mae
+cuda,42,259,1.1148399114608765,1.2092113494873047,0.12479431927204132,0.4137954115867615,0.04817184433341026,0.0,0.27405645345386703,0.4137954115867615

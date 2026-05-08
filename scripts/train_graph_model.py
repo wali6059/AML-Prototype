@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -21,6 +22,16 @@ from tip_or_skip.data import load_dataset
 from tip_or_skip.extra import flow_features
 
 EXPERIMENT_DIR = ARTIFACT_DIR / "runs"
+
+
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    if torch.backends.cudnn.is_available():
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
 
 
 class Gcn(nn.Module):
@@ -84,8 +95,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=500)
     parser.add_argument("--hidden", type=int, default=32)
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
+    set_seed(args.seed)
     ensure_directories()
     EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
     df = _data()
@@ -147,6 +160,7 @@ def main() -> None:
     test_blend = best_alpha * valid_pred[:, 0] + (1 - best_alpha) * y_train[:, 0]
     metrics = {
         "device": str(device),
+        "seed": args.seed,
         "nodes": int(len(zones)),
         "valid_tip_mae": _mae(pred, valid_t, valid_mask, 0),
         "test_tip_mae": _mae(pred, test_t, test_mask, 0),

@@ -7,15 +7,15 @@ from pathlib import Path
 PACKAGE_DIR = Path(__file__).resolve().parent
 SRC_DIR = PACKAGE_DIR.parent
 HF_SPACE_DIR = SRC_DIR.parent
-PROTOTYPE_DIR = HF_SPACE_DIR.parent
-FINAL_DATASET_DIR = PROTOTYPE_DIR / "final_dataset"
+DATA_DIR = HF_SPACE_DIR / "data"
+FINAL_DATASET_DIR = DATA_DIR / "final_dataset"
 FINAL_DATASET_PATH = FINAL_DATASET_DIR / "tip_or_skip_final_dataset.parquet"
 FINAL_PACKAGE_PATH = FINAL_DATASET_DIR / "tip_or_skip_final_dataset_package.zip"
 ARTIFACT_DIR = HF_SPACE_DIR / "artifacts"
 FINAL_ARTIFACT_DIR = ARTIFACT_DIR / "final"
-REPORT_DIR = PROTOTYPE_DIR / "report"
-FIGURE_DIR = REPORT_DIR / "figures"
-SUBMISSION_DIR = PROTOTYPE_DIR / "submission"
+REPORT_DIR = ARTIFACT_DIR / "report_data"
+FIGURE_DIR = HF_SPACE_DIR / "docs" / "figures"
+SUBMISSION_DIR = HF_SPACE_DIR / "submission"
 
 TARGET_COLUMNS = ["tip_amount", "tip_given", "log_tip_amount"]
 LEAKAGE_COLUMNS = TARGET_COLUMNS + ["total_amount", "payment_type", "source_file", "source_url"]

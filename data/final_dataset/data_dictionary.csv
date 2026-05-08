@@ -1,0 +1,47 @@
+column,role,use_as_model_feature,description
+taxi_type,feature,True,Yellow or green TLC taxi fleet.
+pickup_datetime,raw_reference,False,Original pickup timestamp.
+dropoff_datetime,raw_reference,False,Original dropoff timestamp.
+pickup_year,feature,True,Pickup calendar year.
+pickup_month,feature,True,Pickup calendar month.
+pickup_year_month,feature,False,YYYY-MM pickup month label.
+pickup_day,feature,False,Pickup day of month.
+pickup_hour,feature,True,Pickup hour from 0 to 23.
+pickup_weekday,feature,True,Pickup weekday where Monday is 0 and Sunday is 6.
+is_weekend,feature,True,"1 when pickup weekday is Saturday or Sunday, else 0."
+daypart,feature,True,"Morning, midday, evening, or night bucket derived from pickup hour."
+time_split,split,False,train: 2024 Jan-Sep; valid: 2024 Oct-Dec; test: all 2025.
+trip_duration_minutes,feature,True,"Dropoff minus pickup in minutes, clipped at 180."
+trip_distance,feature,True,Trip distance in miles.
+fare_amount,feature,True,Metered fare amount before tip.
+extra,feature,True,TLC extra surcharge field.
+mta_tax,feature,True,MTA tax field.
+tolls_amount,feature,True,Tolls amount field.
+improvement_surcharge,feature,True,Improvement surcharge field.
+congestion_surcharge,feature,True,Congestion surcharge field when present.
+airport_fee,feature,True,Airport fee field when present.
+cbd_congestion_fee,feature,True,CBD congestion fee field when present.
+total_amount,raw_reference,False,Total charged amount; exclude from modeling because it includes tip information.
+VendorID,feature,True,Original TLC vendor ID.
+vendor_id,feature,False,String version of VendorID for categorical modeling.
+passenger_count,feature,False,Passenger count reported by TLC.
+passenger_bucket,feature,True,"Passenger count bucket: 1, 2, 3, 4, 5, 6+, or Unknown."
+RatecodeID,feature,False,Original TLC rate code.
+ratecode,feature,True,String version of RatecodeID for categorical modeling.
+store_and_fwd_flag,feature,True,TLC store-and-forward flag.
+payment_type,filter_reference,False,Payment type retained as 1 only; cash tips are not recorded by TLC tip_amount.
+trip_type,feature,True,Green taxi trip type when present.
+ehail_fee,feature,False,Green taxi e-hail fee when present.
+PULocationID,feature,True,Pickup taxi zone ID.
+DOLocationID,feature,True,Dropoff taxi zone ID.
+pickup_borough,feature,True,Pickup taxi-zone borough.
+pickup_zone,feature,True,Pickup taxi-zone name.
+pickup_service_zone,feature,True,Pickup TLC service zone.
+dropoff_borough,feature,True,Dropoff taxi-zone borough.
+dropoff_zone,feature,True,Dropoff taxi-zone name.
+dropoff_service_zone,feature,True,Dropoff TLC service zone.
+tip_amount,target,False,Recorded electronic tip amount in dollars.
+tip_given,target,False,"Stage 1 label: 1 if tip_amount > 0, else 0."
+log_tip_amount,target,False,Stage 2 label: log(1 + tip_amount). Use on tipped rows for conditional amount modeling.
+source_file,provenance,False,Raw TLC parquet file used to create the row.
+source_url,provenance,False,Official TLC CloudFront source URL.

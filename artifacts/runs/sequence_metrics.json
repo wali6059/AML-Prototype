@@ -1,10 +1,11 @@
 {
-  "tip_rate_mae": 0.14801497757434845,
-  "avg_tip_mae": 1.7967462539672852,
+  "tip_rate_mae": 0.15117354691028595,
+  "avg_tip_mae": 1.7789300680160522,
   "naive_tip_rate_mae": 0.158962219953537,
   "naive_avg_tip_mae": 2.3972878456115723,
   "epochs": 45,
   "lookback": 6,
+  "seed": 42,
   "device": "cuda",
   "test_rows": 43065
 }

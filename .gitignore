@@ -1,5 +1,6 @@
 .DS_Store
 *.zip
+!data/final_dataset/tip_or_skip_final_dataset_package.zip
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -9,9 +10,15 @@ tests/
 scripts/generate_latex_report.py
 scripts/package_submission.py
 artifacts/final/*
+!artifacts/final/baselines/
+artifacts/final/baselines/*
+!artifacts/final/baselines/baseline_metrics.json
+!artifacts/final/baselines/tree_hurdle.joblib
 !artifacts/final/transformer_mdn/
 artifacts/final/transformer_mdn/*
 !artifacts/final/transformer_mdn/transformer_mdn.pt
 !artifacts/final/transformer_mdn/feature_encoder.joblib
 artifacts/final_report/
+submission/
 local_server_logs/
+pipeline_logs/

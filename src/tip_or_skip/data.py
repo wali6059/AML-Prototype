@@ -13,7 +13,7 @@ def load_dataset(columns: Iterable[str] | None = None, path: Path | None = None)
     if not dataset_path.exists():
         raise FileNotFoundError(
             f"Final dataset not found at {dataset_path}. "
-            "Generate it from Prototype/final_dataset/generate_tip_or_skip_dataset.py first."
+            "Generate or restore it in data/final_dataset first."
         )
     return pd.read_parquet(dataset_path, columns=list(columns) if columns is not None else None)
 
@@ -57,4 +57,3 @@ def sample_for_development(df: pd.DataFrame, max_rows: int | None, random_state:
     if max_rows is None or len(df) <= max_rows:
         return df
     return df.sample(n=max_rows, random_state=random_state).reset_index(drop=True)
-

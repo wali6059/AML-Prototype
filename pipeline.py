@@ -26,7 +26,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 ROOT_DIR = Path(__file__).resolve().parent
-RAW_DATA_DIR = ROOT_DIR.parent
+RAW_DATA_DIR = ROOT_DIR / "data"
 ARTIFACT_DIR = ROOT_DIR / "artifacts"
 
 TAXI_CONFIGS: Dict[str, Dict[str, object]] = {

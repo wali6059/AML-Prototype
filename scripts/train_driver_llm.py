@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import random
 import sys
 from pathlib import Path
 
@@ -16,6 +17,15 @@ sys.path.insert(0, str(ROOT / "src"))
 from tip_or_skip.config import ARTIFACT_DIR, ensure_directories
 
 EXPERIMENT_DIR = ARTIFACT_DIR / "runs"
+
+
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    if torch.backends.cudnn.is_available():
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
 
 
 class ChatRows(Dataset):
@@ -101,17 +111,21 @@ def generate_answers(model, tokenizer, rows, device, max_new_tokens: int = 120) 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="sshleifer/tiny-gpt2")
+    parser.add_argument("--model", default="Qwen/Qwen2.5-0.5B-Instruct")
     parser.add_argument("--epochs", type=int, default=3)
-    parser.add_argument("--batch-size", type=int, default=4)
-    parser.add_argument("--lr", type=float, default=2e-5)
-    parser.add_argument("--max-length", type=int, default=512)
-    parser.add_argument("--output-dir", default=str(EXPERIMENT_DIR / "driver_llm"))
-    parser.add_argument("--lora", action="store_true")
+    parser.add_argument("--batch-size", type=int, default=1)
+    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--max-length", type=int, default=384)
+    parser.add_argument("--output-dir", default="artifacts/runs/driver_llm")
+    parser.set_defaults(lora=True)
+    parser.add_argument("--lora", dest="lora", action="store_true")
+    parser.add_argument("--no-lora", dest="lora", action="store_false")
     parser.add_argument("--push-to-hub", action="store_true")
     parser.add_argument("--hub-model-id", default="")
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
+    set_seed(args.seed)
     ensure_directories()
     EXPERIMENT_DIR.mkdir(parents=True, exist_ok=True)
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -129,7 +143,15 @@ def main() -> None:
     eval_rows = read_jsonl(EXPERIMENT_DIR / "llm_eval.jsonl")
     train_ds = ChatRows(train_rows, tokenizer, args.max_length)
     eval_ds = ChatRows(eval_rows, tokenizer, args.max_length)
-    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, collate_fn=lambda b: collate(b, tokenizer))
+    generator = torch.Generator()
+    generator.manual_seed(args.seed)
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        collate_fn=lambda b: collate(b, tokenizer),
+        generator=generator,
+    )
     eval_loader = DataLoader(eval_ds, batch_size=args.batch_size, shuffle=False, collate_fn=lambda b: collate(b, tokenizer))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -148,6 +170,9 @@ def main() -> None:
         eval_loss = evaluate_loss(model, eval_loader, device)
         history.append({"epoch": epoch + 1, "train_loss": float(sum(losses) / max(len(losses), 1)), "eval_loss": eval_loss})
     output_dir = Path(args.output_dir)
+    output_label = str(output_dir).replace("\\", "/")
+    if not output_dir.is_absolute():
+        output_dir = ROOT / output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
@@ -158,11 +183,12 @@ def main() -> None:
         "train_examples": len(train_rows),
         "eval_examples": len(eval_rows),
         "epochs": args.epochs,
+        "seed": args.seed,
         "final_train_loss": history[-1]["train_loss"],
         "final_eval_loss": history[-1]["eval_loss"],
         "eval_perplexity": float(math.exp(min(history[-1]["eval_loss"], 20))),
         "zone_mention_rate": float(sum(row["mentions_zone"] for row in generations) / max(len(generations), 1)),
-        "output_dir": str(output_dir),
+        "output_dir": output_label,
     }
     if args.push_to_hub:
         repo_id = args.hub_model_id or "wali6059/tip-or-skip-driver-llm"
