@@ -132,7 +132,41 @@
         </p>
         <p class="meta">Wali Ahmed — Geoffrey Kim — Jiachen Tu</p>
       </header>
+      <section>
+        <h2>Motivation and Background:</h2>
+        <p>
+          According to data on Indeed.com, taxi drivers earn around $25 per hour or around $52,000 per year. This figure was chosen as a solid middle ground; most of the other estimates given by other sources were lower, and some were a bit higher. Moreover, given the extremely high costs of New York City, drivers can work up to 60 hours a week. However, it is difficult to pin down their actual net income compared to their gross income. This is because most drivers also bear the costs of work, such as gas, vehicle leasing, and more. As a result, tipping has far more implications for a taxi driver's income than their hourly wage.
+        </p>
+        <p>
+          Naturally, drivers with more experience in higher-demand areas earn the most. However, this can create a "top-heavy" industry where older, experienced drivers pick up most of the work and thus the tips. This can disadvantage newer, younger drivers who are more prone to mistakes and might receive fewer tips. According to a dataset, 44.3% of taxi drivers are over 50 years old, whereas 8.5% of drivers are younger than 30. In comparison, about 24.5% of Uber drivers are over 50 years old, and 19.9% are younger than 30. Many other industries have this problem, especially in urban areas, where most of the work goes to already experienced workers.
+        </p>
+      </section>
 
+      <section>
+        <h2>Introduction:</h2>
+        <p>
+          A map predicting tipping rates and amounts may not be the perfect solution to some of these problems, but it could potentially help. It can be better thought of as an easily accessible supplement to some existing solutions
+        </p>
+        <p>
+          It is well known that drivers focus on working in high-traffic areas during peak hours, especially in Manhattan or airports, where wages and tip rates are far higher. What is not well known is that drivers bear the cost of gas, and thus, simply maximizing the number of trips in the city is a poor strategy. Sitting in traffic for a long time is an inefficient use of fuel and lease time. By using our map, drivers can identify zones where high tip rates make each trip worth the fuel and time invested, rather than chasing volume alone.
+        </p>
+        <p>
+          Furthermore, a tip map tool accessible to everyone means a reduced learning curve and thus improved competition. Younger drivers can compete against veteran drivers with access to the same locational and time-based advantages, this time with a more data-centric approach. Instead of spending months figuring out how to navigate the city and optimize their wages, they can do initial research using our tool.
+        </p>
+      </section>
+
+      <section>
+        <h2>Data:</h2>
+        <p>
+          We used metered ride records from the NYC Taxi and Limousine Commission public dataset. Our data consists of 24 total months of records from 2024-2025, specifically 12 months of yellow taxi records and 12 months of green taxi records. After cleaning, this comes out to about 420,000 trips.
+        </p>
+        <p>
+          The dataset contains many details for each trip, including but not limited to pickup and dropoff zones, timestamps, trip distance, and fare amount. Only tips paid through credit card transactions are included. Unfortunately, this means our sample is fully limited to customers using credit cards for tips, but we do not believe this will affect our general conclusions.
+        </p>
+        <p>
+          For the model, we used the months January to September as our training set, October as our validation set, and the last two months as our test set.
+        </p>
+      </section>
             <section>
         <h2>Implementation</h2>
         <p>
