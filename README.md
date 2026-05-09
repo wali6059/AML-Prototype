@@ -38,6 +38,9 @@ The project uses NYC TLC Yellow and Green taxi trip data. Cash tips are not reco
 ## blog
 The blog files are in the docs folder. Also you can see the blog on https://wali6059.github.io/AML-Prototype/
 
+## APP
+see our app at http://huggingface.co/spaces/wali6059/AML-Prototype
+
 ## Artifacts
 
 The deployed app does not train models at runtime. It loads saved files from `artifacts/`, including model bundles, summary tables, final report data, run metrics, and the Transformer-MDN files needed for the same-ride comparison.
