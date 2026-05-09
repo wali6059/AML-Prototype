@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tip or Skip: NYC Taxi Tipping Prediction</title>
+    <title>Tip or Skip: NYC Taxi Tipping Prediction – Blog Report</title>
     <style>
       body {
         margin: 0;
@@ -37,6 +37,8 @@
       }
       h3 {
         color: #335c67;
+        margin-top: 28px;
+        font-size: 19px;
       }
       .dek {
         font-size: 19px;
@@ -57,24 +59,19 @@
         background: #fff;
         padding: 16px;
         border: 1px solid #d8ddd9;
+        border-radius: 8px;
       }
       figcaption {
         color: #4e5b5c;
         font-size: 14px;
         margin-top: 10px;
+        text-align: center;
       }
       img {
         max-width: 100%;
         height: auto;
         display: block;
-      }
-      .fig-row {
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
-      }
-      .fig-row figure {
-        flex: 1 1 280px;
+        margin: 0 auto;
       }
       .data-table {
         width: 100%;
@@ -82,6 +79,7 @@
         margin: 16px 0 24px;
         background: #fff;
         font-size: 14px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
       }
       .data-table th,
       .data-table td {
@@ -97,120 +95,45 @@
         background: #edf1ed;
         padding: 1px 4px;
         border-radius: 3px;
+        font-size: 0.9em;
       }
       p {
         margin: 0 0 14px;
+      }
+      .metrics-grid {
+        background: #eef3ef;
+        padding: 12px 18px;
+        border-radius: 12px;
+        margin: 18px 0;
+      }
+      hr {
+        margin: 32px 0;
+        border: none;
+        border-top: 1px solid #c9d5ce;
+      }
+      footer {
+        margin-top: 56px;
+        font-size: 13px;
+        color: #5b6f6b;
+        border-top: 1px solid #d8ddd9;
+        padding-top: 24px;
+        text-align: center;
       }
     </style>
   </head>
   <body>
     <main>
       <header>
-        <p class="meta">
-          Applied Machine Learning Final Project &mdash; May 2026
-        </p>
-        <h1>Tip or Skip: NYC Taxi Tipping Prediction &amp; Tip Simulation</h1>
+        <p class="meta">Applied Machine Learning Final Project Blog — May 2026</p>
+        <h1>Tip or Skip: NYC Taxi Tipping Prediction & Dynamics</h1>
         <p class="dek">
-          An end-to-end ML system for predicting whether a rider will tip and
-          estimating the tip amount distribution, built on NYC TLC Yellow and
-          Green taxi records from 2024&ndash;2025.
+          A comprehensive exploration of spatiotemporal dynamics behind taxi tips, 
+          evaluating machine learning models from gradient boosting to deep learning MDNs.
         </p>
-        <p class="meta">Wali Ahmed &mdash; Geoffrey Kim &mdash; Jiachen Tu</p>
+        <p class="meta">Wali Ahmed — Geoffrey Kim — Jiachen Tu</p>
       </header>
 
-      <section>
-        <h2>
-          Why is the problem you are trying to solve interesting or important?
-        </h2>
-        <p>
-          According to data, taxi drivers earn about $16&ndash;26/hr, or around
-          $33,000 to $55,000 a year. Their income is heavily dependent on this
-          hourly income; as a result, drivers can work up to 60 hours a week.
-          Furthermore, they often face the burden of work costs such as gas,
-          vehicle leasing, and more. Thus, tipping is crucial to the trip payout
-          for a driver.
-        </p>
-        <p>
-          Naturally, drivers with more experience in higher-demand areas earn
-          the most. Instead of roaming around, going from pickup to dropoff to
-          pickup again, drivers can utilize our tool for predictable tip
-          outcomes. For example, they may leverage our map to plan routes.
-          Rather than dropping off and picking up in a low-tipping-rate area,
-          they can move to the next best area before picking up. This implies a
-          better experience for customers as well. Drivers in higher tip areas
-          may be discouraged from leveraging bad practices to increase their
-          payouts from a trip, such as slow driving or longer routes.
-        </p>
-      </section>
-
-      <section>
-        <h2>
-          What is the history of the ideas you explored? Include a careful
-          literature review.
-        </h2>
-        <p>
-          To start, we used a linear hurdle model. Specifically, the model uses
-          logistic regression to predict <code>tip_given</code>, then ridge
-          regression on <code>log_tip_amount</code> for trips that received a
-          tip. This was the baseline model that we hoped to beat.
-        </p>
-        <p>
-          We moved on to a Histogram-Based Gradient Boosting hurdle model, as a
-          tree model would be a natural fit for our mixed feature data. This
-          actually did end up being the strongest model, so it is the one
-          included in the app.
-        </p>
-        <p>
-          Next is a Tabular Transformer with a Mixture Density Network head,
-          where each trip feature is treated as a token passed through
-          self-attention. This provides a Gaussian mixture distribution for
-          tips, which then allows us to determine uncertainty and risk behind
-          our predictions.
-        </p>
-        <p>Our initial research focused on these sources and data:</p>
-        <p>
-          Sources: NYC TLC Trip Record Data for Yellow and Green Taxi Trip
-          Records (PARQUET), monthly files 2024&ndash;2025 (<a
-            href="https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
-            >nyc.gov/site/tlc</a
-          >); NYC Taxi Zones dataset (<a
-            href="https://data.cityofnewyork.us/Transportation/NYC-Taxi-Zones/8meu-9t5y"
-            >data.cityofnewyork.us</a
-          >); Bishop, C. M. Mixture Density Networks. Aston University technical
-          report, 1994; Huang, X. et al. TabTransformer: Tabular Data Modeling
-          Using Contextual Embeddings. 2020; Guo, C. et al. On Calibration of
-          Modern Neural Networks. ICML, 2017; Kipf, T. N. and Welling, M.
-          Semi-Supervised Classification with Graph Convolutional Networks.
-          ICLR, 2017; Hochreiter, S. and Schmidhuber, J. Long Short-Term Memory.
-          Neural Computation, 1997; Hu, E. J. et al. LoRA: Low-Rank Adaptation
-          of Large Language Models. 2021.
-        </p>
-      </section>
-
-      <section>
-        <h2>
-          What prior work is most similar to yours? If your work is original,
-          explain what makes it original.
-        </h2>
-        <p>
-          There are certainly other existing tip maps, but the information
-          provided is often limited. Some examples of prior work includes a map
-          of tip to trip duration ratio in NYC. One differentiates dropoff and
-          pickup tip rates.
-        </p>
-        <p>
-          Our work is certainly not the first or last as far as tipping maps go,
-          but our app is original in many ways. Specifically, we offer
-          predictions based on a user's designated parameters, which no map
-          offers let alone an app. Furthermore, our tree model is able to
-          consider many features, whereas other maps are limited to some.
-          Moreover, we provide a better idea of uncertainty behind our
-          predictions, whereas many maps fail to even consider probability in
-          the first place.
-        </p>
-      </section>
-
-      <section>
+            <section>
         <h2>Implementation</h2>
         <p>
           We have a deployed Gradio app with a reusable artifact pipeline, so
@@ -339,125 +262,6 @@
           actually use.
         </p>
 
-        <div class="fig-row">
-          <figure>
-            <img
-              src="figures/sequence_lstm_training.png"
-              alt="Sequence LSTM training curve"
-            />
-            <figcaption>
-              The LSTM loss drops quickly and then flattens, which means the
-              model learned most of the useful hourly pattern early in training.
-              The flat ending also shows that more epochs were not changing the
-              forecast much.
-            </figcaption>
-          </figure>
-          <figure>
-            <img
-              src="figures/sequence_shift_signal.png"
-              alt="Sequence shift signal"
-            />
-            <figcaption>
-              This compares the current hour's tip rate with the next hour's
-              tip rate. The spread shows why shift timing is noisy, but the
-              cluster near higher rates also shows that recent hours can still
-              carry useful information.
-            </figcaption>
-          </figure>
-        </div>
-
-        <div class="fig-row">
-          <figure>
-            <img
-              src="figures/zone_flow_graph_summary.png"
-              alt="Zone flow graph summary"
-            />
-            <figcaption>
-              This shows the busiest pickup and dropoff flow zones. These high
-              volume zones create the strongest graph connections, so they have
-              the most influence in the zone-network experiment.
-            </figcaption>
-          </figure>
-          <figure>
-            <img
-              src="figures/graph_gcn_zone_prediction.png"
-              alt="Graph GCN zone prediction"
-            />
-            <figcaption>
-              This compares the graph model's predicted average tip for each
-              zone with the observed 2025 zone average. Points on the dashed
-              line would be perfect predictions. Many zones cluster around
-              three to four dollars, but the highest-tip zones fall below the
-              line, so the graph model pulls them toward the average and misses
-              the biggest tip areas.
-            </figcaption>
-          </figure>
-        </div>
-
-        <figure>
-          <img
-            src="figures/copilot_eval_summary.png"
-            alt="Driver copilot evaluation summary"
-          />
-          <figcaption>
-            This checks whether the driver copilot stayed grounded. The scripted
-            checks look for zone names, numbers, caveats, and a usable
-            recommendation instead of a generic answer.
-          </figcaption>
-        </figure>
-
-        <figure>
-          <img
-            src="figures/model_comparison.png"
-            alt="Model comparison across logistic ridge, boosted tree, and Transformer MDN"
-          />
-          <figcaption>
-            This compares the main models side by side. The boosted tree wins
-            for expected-tip MAE and calibration, while the Transformer-MDN adds
-            an uncertainty range for the tip amount.
-          </figcaption>
-        </figure>
-
-        <figure>
-          <img
-            src="figures/transformer_ablation_expected_tip_mae.png"
-            alt="Transformer MDN feature ablation expected tip MAE"
-          />
-          <figcaption>
-            This shows the Transformer-MDN ablation run. Lower bars are better.
-            Removing distance made the error much higher. The other feature
-            groups were close to the full model.
-          </figcaption>
-        </figure>
-
-        <div class="fig-row">
-          <figure>
-            <img
-              src="figures/ablation_expected_tip_mae.png"
-              alt="Feature ablation expected tip MAE"
-            />
-            <figcaption>
-              This shows what happens when feature groups are removed. The
-              errors are close, but removing zone, fare, or distance information
-              changes the score, so the model should use the full ride context
-              instead of a broad average.
-            </figcaption>
-          </figure>
-          <figure>
-            <img
-              src="figures/calibration_curve.png"
-              alt="Tip probability calibration curve"
-            />
-            <figcaption>
-              This checks whether the predicted probabilities match real
-              outcomes. The high-probability bins sit close to the diagonal,
-              which is important because most trips are in that range. Smaller
-              low-probability bins are noisier and should be interpreted more
-              carefully.
-            </figcaption>
-          </figure>
-        </div>
-
         <p>
           Our tip/no tip stage evaluation relied on ROC-AUC, average precision,
           log loss, Brier score, and calibration error because the
@@ -482,112 +286,234 @@
         </p>
       </section>
 
+
       <section>
-        <h2>
-          Can you include illustrations that explain a central concept clearly?
-        </h2>
+        <h2>Result</h2>
         <p>
-          We see how a two-stage hurdle model performs well compared to other
-          methods. We are able to find predicted expected tip for each area.
+          In the process of building the Tip or Skip system, we not only focus on the final prediction accuracy, but also hope to deeply understand the spatiotemporal dynamics behind taxi tips. After applying multiple models to the dataset, we compared their performance and actual performance. The following are the core findings we have derived from our experiments.
+        </p>
+      </section>
+
+      <section>
+        <h2>Data analyse</h2>
+        <p>
+          Before delving into complex machine learning models, we first analyzed the macro trends.
+        </p>
+        
+        <figure>
+          <img src="figures/monthly_tip_rate.png" alt="Monthly tip rate">
+          <figcaption>Recorded Electronic Tip Rate by Month: Comparing Yellow and Green taxi trends.</figcaption>
+        </figure>
+
+        <p>
+          The monthly data shows that the tip ratio fluctuates to some extent among different months. The overall tip rate of Yelow type vehicles has been continuously declining, while the tip rate of Green type vehicles, although fluctuating, remains unchanged overall. This indicates that the temporal characteristics are worth analyzing, and our model needs to consider the timing factor. For example, data at the month and year levels.
         </p>
 
         <figure>
-          <img src="figures/model_comparison.png" alt="Model comparison" />
-          <figcaption>
-            Model comparison: ROC AUC, log-tip RMSE, and expected tip MAE across
-            the linear baseline, boosted tree, and Transformer MDN.
-          </figcaption>
+          <img src="figures/top_zone_expected_tip.png" alt="Spatial dimension">
+          <figcaption>Spatial Dimension: Top Manhattan Pickup Zones by Predicted Expected Tip.</figcaption>
         </figure>
 
-        <div class="fig-row">
-          <figure>
-            <img src="figures/calibration_curve.png" alt="Calibration curve" />
-            <figcaption>
-              Calibration curve: how well the predicted tip probabilities match
-              observed tip rates across probability bins.
-            </figcaption>
-          </figure>
-          <figure>
-            <img
-              src="figures/top_zone_expected_tip.png"
-              alt="Top zones by expected tip"
-            />
-            <figcaption>
-              Top NYC taxi zones ranked by expected tip amount, showing which
-              pickup areas consistently produce the highest predicted tips.
-            </figcaption>
-          </figure>
+        <p>
+          Secondly, there is the spatial dimension. From the perspective of the spatial dimension, 
+          there are significant differences in the expected tips for different pick-up and drop-off areas. 
+          So, our model also needs to take spatial factors into account. 
+          This also echoes our original intention of creating a tip map.
+        </p>
+      </section>
+
+      <section>
+        <h2>Model selection</h2>
+        <p>
+          After conducting a macro analysis, we clarified from which dimensions our project would start and which ones were important. It's time to choose a model now. In order to find the best prediction scheme, we set problems for Two phase field Model (Two - Stage spend Model) : to predict whether "tipping" (classification), to predict how much to tip "(return)". During the exploration of the entire project, we used the logical/ridge regression baseline, Boosted Trees, and the Transformer-based hybrid density network (Tabular Transformer MDN).
+        </p>
+        
+        <h3>Indicators and results of single-point prediction:</h3>
+        <div class="metrics-grid">
+          <ul>
+            <li><strong>ROC_AUC:</strong> Measures the overall ability of the model to distinguish between positive classes (giving tips) and negative classes (not giving tips). The higher, the better.</li>
+            <li><strong>Brier Score:</strong> The mean square error between the predicted probability and the true result. It measures both accuracy and calibration. The lower, the better.</li>
+            <li><strong>MAE:</strong> The difference between the predicted tip amount and the actual tip amount. The lower, the better.</li>
+            <li><strong>RMSE:</strong> Similar to MAE, but squares the error, penalizing extreme incorrect predictions more severely.</li>
+          </ul>
         </div>
-      </section>
 
-      <section>
-        <h2>
-          Can you make the post pedagogical, so that someone unfamiliar with the
-          topic can understand the motivation, method, and results?
-        </h2>
+        <figure>
+          <img src="figures/model_comparison.png" alt="Performance comparison">
+          <figcaption>Performance comparison of the three models: Logistic Ridge, Tree Hurdle, and Transformer MDN.</figcaption>
+        </figure>
+
         <p>
-          The problem has been outlined; taxi drivers are not exactly working in
-          the greatest conditions. Tips are important to trip payouts since
-          hourly fares calculated on a meter are often low. This is exacerbated
-          by the burden of working costs such as gas and vehicle leasing fees.
+          This is a performance comparison of the three models we used. Surprisingly, the gradient boosting tree is the best-performing model. In the classification task of the first stage, it achieved a ROC-AUC of 0.771, and the Brier score was also the lowest. This indicates that when the tree model determines whether passengers "tip or not", it not only has the highest accuracy, but also the output probability is the closest to reality. In the second stage of the regression task, its expected tip MAE (mean absolute error) dropped to approximately $1.45, the lowest among the three models.
         </p>
         <p>
-          Our app intends to help taxi drivers with a tip map; this time, one
-          that provides far more information than the others. Whereas typical
-          maps display singular, unhelpful metrics for each area in Manhattan,
-          we allow drivers to customize the given parameters for a tip
-          prediction. Nicely put, it allows us to answer both questions rather
-          than one or the other: will there be a tip, and if so how much? Now,
-          we allow drivers to get better predictions based on real data, for
-          example by allowing them to specify where they live, when they will
-          work, dropoff and pickup locations, and more.
+          The logic/ridge regression model, by contrast, a mediocre. In classification tasks, its AUC is lower than that of the tree model but slightly better than that of the Transformer. In the regression task, its MAE is the highest. This shows that traditional linear models still cannot handle high-dimensional and complex tasks.
         </p>
         <p>
-          The Model Lab also includes a same-ride check. It runs the boosted
-          tree hurdle model and the Transformer MDN on the same trip inputs,
-          putting the point prediction beside the deep model's lower and upper
-          tip range.
+          Finally Tabular Transformer MDN model and logic/ridge regression model in the classification task performance. It performs slightly better than the logistic/ridge regression model in the regression task, but still not as good as the tree model. Its MAE is as high as 2.3 and RMSE is as high as 3.1.
+          In general, the single point prediction tasks, the performance of the gradient promotion tree is best, in the regression and prediction tasks have reached a very high precision and small errors.
         </p>
       </section>
 
       <section>
-        <h2>What did you try?</h2>
+        <h2>The importance of the Transformer MDN</h2>
         <p>
-          We tried a Graph Convolutional Network because connected pickup and
-          dropoff zones might share tipping patterns. The graph model was useful
-          as an experiment, but it still underpredicted the highest-tip zones
-          and was not stronger than the final boosted tree for ride-level
-          prediction. We also tried a sequence LSTM to forecast near-future tip
-          rate and average tip from recent hourly patterns. It improved
-          average-tip forecasting over a naive baseline, but the tip-rate gains
-          were smaller, so we treated it as a stretch experiment rather than the
-          main prediction engine.
+          At this point in the analysis, people have doubts. Since Tabular Transformer MDN is not 
+          the best model, then why do we still need it?
+        </p>
+        <p>
+          This is because all our previous evaluations were single-point prediction evaluations, and this is precisely not the strong suit of Hybrid density networks (MDN). Tabular Transformer MDN can achieve probabilistic Calibration and uncertainty perception. Transformer MDN does not merely output a fixed number but predicts the probability of distribution of tips. This enables our system to provide drivers with confidence intervals, helping them make more reliable shift scheduling decisions.
+        </p>
+
+        <figure>
+          <img src="figures/calibration_curve.png" alt="Calibration Curve">
+          <figcaption>Calibration Curve: Tree Hurdle model demonstrating high reliability in probability output.</figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Ablation Study</h2>
+        <p>
+          After studying the model, we began to study the dimensions and features. Now that we have confirmed the irreplaceability of MDN in "uncertainty perception". We want to confirm that our tree model architecture really works in the research of various features. For instance, whether it has effectively learned the temporal and spatial features in the data. Under this premise, we do the Ablation Study, we try to delete model step by step input features or components, to observe the performance of attenuation. The result is as shown in the following figure:
+        </p>
+
+        <figure>
+          <img src="figures/ablation_expected_tip_mae.png" alt="Feature Ablation">
+          <figcaption>Feature Ablation: Expected Tip MAE across different feature subsets.</figcaption>
+        </figure>
+
+        <p>
+          We observed an interesting phenomenon: when some features were removed, the expected tip MAE of the tree model hardly changed. This indicates that removing a single feature has little impact on the model's performance, and our model has strong robustness against non-core signals and will not be disturbed by redundant data. In the future, we can definitely streamline the input features of the model.
         </p>
       </section>
 
       <section>
-        <h2>What were your metrics of success?</h2>
+        <h2>Breadth exploration</h2>
         <p>
-          We evaluated the first stage of the hurdle model by measuring how well
-          it predicted tips for trips with tips compared to trips with no tips.
-          Resultantly, the tree model scored an ROC-AUC of 0.771 for yellow and
-          green taxis. The expected-tip mean absolute error was $1.45, which is
-          strong given the relatively wider range of around $1-10 for tip
-          amounts. The Transformer MDN had a higher MAE of $2.34 but allows us
-          to find uncertainty intervals that other maps do not provide.
+          In the process of seeking the optimal solution, we also attempted some cutting-edge deep learning architectures. Although they did not become the final solutions, they provided some phenomena and results.
+        </p>
+        
+        <h3>GCN</h3>
+        <p>
+          First of all, we want to know what the differences in tips are among various regions in New York and how much they differ from the theoretical values. Because GCN can capture the tip relationship of each region through advantages such as neighbor aggregation and inter-region connectivity, we used GCN to explore this relationship.
+        </p>
+
+        <figure>
+          <img src="figures/graph_gcn_zone_prediction.png" alt="Graph Model Result">
+          <figcaption>Graph Model: Zone Expected Tip (Observed vs Predicted).</figcaption>
+        </figure>
+
+        <p>
+          This is the result we obtained. It indicates that GCN performs fairly within the expected tip range of 3 to 5, but its performance is very poor in the extremely low or high expected tip space. This indicates that the regional characteristic differences in New York are extremely intense. However, GCN often likes to fit extreme values to the average value, which leads to the situation shown in the figure where high-TIPS regions have low predictions and low-TIPS regions have high predictions. We thus gave up using the GCN model.
+        </p>
+
+        <h3>LSTM</h3>
+        <p>
+          Because the data has time series characteristics, we attempt to use LSTM to capture the time series signals within the past hour in order to predict future returns. We have envisioned such a scenario: if a driver has encountered passengers giving high tips one after another in the past few hours, or is currently in a peak period of tips, then the LSTM should be able to capture this trend of tip changes at the temporal level and thus predict the subsequent earnings more accurately.
+        </p>
+          We have obtained the following two pictures:
+        <p>
+
+        </p>
+
+        <figure>
+          <img src="figures/sequence_lstm_training.png" alt="LSTM Training">
+          <figcaption>Sequence LSTM Training: Rapid convergence of training and validation loss.</figcaption>
+        </figure>
+
+        <p>
+          From this graph, we can find that LSTM converges rapidly in the first few epochs, and then the training error and validation error remain around 5 and are very close. This indicates that the model has a good generalization ability. However, MSE had already reached its fitting capability limit of around 10 epochs and could no longer further reduce the error. This indicates that although LSTM is effective, the positive impact it brings is also very limited.
+        </p>
+
+        <figure>
+          <img src="figures/sequence_shift_signal.png" alt="LSTM2">
+          <figcaption>sequence_shift_signal</figcaption>
+        </figure>
+
+        <p>
+          From this diagram, we find that when we break down time to the hourly level, there is actually no clear relationship between hours. The time series features in the dataset are random. For LSTM, if the data from the previous time step and the next time step do not have a strong causal or trend connection, its performance will be very poor.
+          Overall, we found that the small rates fluctuated very little within a single hour and lacked a clear sequential progression relationship, so we were unable to use LSTM.
+        </p>
+      </section>
+
+
+      <section>
+        <h2>Driver Copilot Evaluation</h2>
+        <p>
+          Our ultimate goal is to deliver a product that is truly useful to drivers. Therefore, we conducted a comprehensive assessment of the Driver Copilot that integrates the above-mentioned model.
+        </p>
+
+        <figure>
+          <img src="figures/copilot_eval_summary.png" alt="copilot">
+          <figcaption>copilot</figcaption>
+        </figure>
+
+        <p>
+          The evaluation shows that the AI Copilot, which combines the precise point prediction of the tree model and the uncertainty interval of the MDN, has passed the grounding check at the zone, number, caveat and overall levels. This indicates that our AI Copilot can correctly utilize regional information and tip numerical information to accurately express uncertainties and constraints.
         </p>
       </section>
 
       <section>
-        <h2>
-          If the project did not succeed, why do you think that was the case?
-        </h2>
+        <h2>Map</h2>
         <p>
-          We'd say that our project was successful, given that we were able to
-          not just provide a basic map but an app experience that caters to each
-          user.
+          At the end of the project, we created a map to help users intuitively understand the real situation of tips in various areas of New York
         </p>
       </section>
+
+      <section>
+        <h2>Conclusion</h2>
+        <p>
+          The Tip or Skip project restructured the prediction of New York taxi tips into a two-stage, classification and regression problem. It also possesses the ability to perceive uncertainty. Our core output is an app in the Hugging Face space, which includes all the experimental charts and data mentioned above, as well as the most important Driver Copilot and the map of tips in New York City. Looking back on the entire project, our greatest success was not merely running through all the baselines and deep models. What was more important was that we built a truly user-centered app experience. 
+          
+          Through the content of this app, we can achieve precise prediction of tips and provide corresponding services/ride suggestions for drivers or passengers. For example, providing personalized shift scheduling suggestions, pick-up preference optimization, and area selection guidance for drivers. Providing better ride suggestions for passengers, such as recommending choosing other transportation methods in high tip areas. This represents a progress from data analysis to application implementation. 
+          
+          Regarding the selection of models, our conclusion is that gradient boosting trees are the best point prediction tool, while Transformer MDN provides crucial uncertainty assessment for actual shift scheduling and decision-making. Our Driver Copilot was also trained by combining these two models. 
+          
+          It must be emphasized that what we emphasize is the patterns summarized from data, rather than causality. This means that the model cannot give 100% accurate suggestions. For example, as long as the driver shifts to a high-rated area to pick up passengers, they will definitely receive higher tips. Therefore, users should use our project as an auxiliary tool.
+        </p>
+      </section>
+
+      <section>
+        <h2>Ethics & Bias</h2>
+        <p>
+          Our project may have both positive and negative impacts on society. Let's first analyze the potential negative effects. At the beginning of this project, we did not consider the moral and social impact aspects. However, as the project progressed, we gradually realized that morality and biases might be implicitly present in our project. First, our project is biased towards data summarization and prediction. Therefore, our model is very likely to incorporate the biases hidden in the data, such as the consumption levels in certain regions might be linked to local residents' income, race, and various social issues. If our project is applied to drivers' decisions (such as the areas they pick up passengers from and the business hours), it might cause drivers to deliberately avoid low-income areas. This could inadvertently exacerbate economic or social inequality. Secondly, regarding the positive impacts, I believe it is an important data foundation for sociologists and the social level to discuss the rationality of tips. The tip culture itself has a lot of controversy, especially in cities like New York where consumption is particularly high. Many people believe that tips should be regarded as a reward for the service provided by the service providers rather than an invisible burden for passengers. Our project can provide a powerful data basis for the discussion of this issue. Our project can visually demonstrate the real distribution of tips in different regions, different times, and different prices. This project will not directly say whether the existence of tips is good or bad, but use data to support public discussions, allowing policymakers and the public to have more evidence when making 
+        </p>
+      </section>
+
+      <section>
+        <h2>AI in the project</h2>
+        <p>
+          First of all, we need to distinguish the difference between using AI and not using AI. In generally speaking, when we say not to use AI, we mean to use traditional statistical methods to help us solve problems. For example, linear regression and traditional regression types. Machine learning methods. The use of AI refers to the application of AI-related models. For example, deep learning models like transformer. For our project, from a macro perspective, our project is to analyze whether passengers will leave tips and the specific number of tips. These are two decision-making processes and are influenced by multiple behavioral patterns. It is very difficult to capture such complex relationships and patterns if only simple linear models or traditional statistical methods are used. Specifically, our dataset contains 64 dimensions and millions of time-series data records. Such high-dimensional and non-linear data cannot be modeled using traditional methods. So, we need to use AI methods to provide us with a good model. Secondly, one of the key focuses of our project is uncertainty analysis, and we have adopted the structure of MDN to achieve this. Finally, the Driver Copilot in the project is directly dependent on AI. Without AI, the core functions of the project would be missing, and we might not even be able to complete these functions. They are reflected in high-precision predictions, data analysis and the presentation of the final results.
+        </p>
+      </section>
+
+      <section>
+        <h2>Prospective works</h2>
+        <p>
+          There are many things we can do. In general, there are three directions: we can enhance the model, develop an application for users, and broaden the research topic. First, regarding the model enhancement, we now know that the Transformer model is not the best for point prediction; the tree model is already the optimal one. If we have more time, we will not continue to research better deep learning models but rather enhance the existing models. For example, we can conduct robustness tests on the existing models and provide the model with different factors such as time, location, weather, and types of taxis to see if the model can perform stably on these different data. Based on this, we can conduct outlier checks on these dimensional subgroups and identify abnormal values (such as abnormal yellow vehicle consumption data in a specific month under specific weather conditions). In this way, we can detect problems in the model or summarize new patterns earlier. In addition, we can input new data (such as data from May 2026) into the model training and create an automated monitoring script to monitor the feature distribution of the latest data. If there is a drift in the distribution, we can detect it in time. For the APP part, we can turn the existing Driver Copilot into a practical application, allowing drivers to quickly know their current tip expectation without having read our project report. Drivers can make decisions on which areas to go to and at what time based on the app's prompts. We can use a simpler interface to summarize complex charts into a sentence containing the region name, vehicle type, and expected tip, rather than a lengthy explanation. At the same time, we can launch some manual calibration functions. If the driver actually receives a lower tip than expected, he can provide feedback. After receiving this feedback, we can improve our model. Finally, we can broaden our research topic. For example, we can expand the research on cities to other major cities besides New York, such as Chicago, Boston, London, Beijing, etc. We can also broaden our research on vehicle types. We can not only predict the tip for taxis but also conduct tip research for ride-hailing or other passing vehicles.
+        </p>
+      </section>
+
+
+
+      <section>
+        <h2>References</h2>
+        <ul class="meta">
+          <li>New York City Taxi and Limousine Commission. TLC Trip Record Data and Data Dictionaries.</li>
+          <li>Bishop, C. M. Mixture Density Networks. Aston University technical report, 1994.</li>
+          <li>Huang, X. et al. TabTransformer: Tabular Data Modeling Using Contextual Embeddings. 2020.</li>
+          <li>Guo, C. et al. On Calibration of Modern Neural Networks. ICML, 2017.</li>
+          <li>Kipf, T. N. and Welling, M. Semi-Supervised Classification with Graph Convolutional Networks. ICLR, 2017.</li>
+          <li>Hochreiter, S. and Schmidhuber, J. Long Short-Term Memory. Neural Computation, 1997.</li>
+          <li>Hu, E. J. et al. LoRA: Low-Rank Adaptation of Large Language Models. 2021.</li>
+        </ul>
+      </section>
+
+      <hr />
+      <footer>
+        <p>Tip or Skip — Applied Machine Learning Final Project Report</p>
+        <p>© Wali Ahmed, Geoffrey Kim, Jiachen Tu — May 2026</p>
+      </footer>
     </main>
   </body>
 </html>
