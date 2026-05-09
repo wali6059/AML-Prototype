@@ -35,6 +35,9 @@ The project uses NYC TLC Yellow and Green taxi trip data. Cash tips are not reco
 - `data/`: repo-local raw 2024 and 2025 TLC parquet files, `taxi_zone_lookup.csv`, and the processed `final_dataset/` package for reproducible rebuilds.
 - `docs/`: printable HTML blog and project figures.
 
+## blog
+The blog files are in the docs folder. Also you can see the blog on https://wali6059.github.io/AML-Prototype/
+
 ## Artifacts
 
 The deployed app does not train models at runtime. It loads saved files from `artifacts/`, including model bundles, summary tables, final report data, run metrics, and the Transformer-MDN files needed for the same-ride comparison.
